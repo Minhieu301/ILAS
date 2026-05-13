@@ -1,7 +1,5 @@
 import React from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import Header from "../components/layout/Header";
-import Footer from "../components/layout/Footer";
 import ChatWidget from "../components/chatbot/ChatWidget";
 import "../styles/moderator/ModeratorLayout.css";
 
@@ -30,15 +28,11 @@ export default function ModeratorLayout() {
 
   return (
     <div className="moderator-layout">
-      <Header />
-
       <main className="moderator-main">
         <div className="moderator-content-wrapper">
           <Outlet />
         </div>
       </main>
-
-      <Footer />
 
       {/* MINI CHAT WIDGET */}
       {showWidget && <ChatWidget />}

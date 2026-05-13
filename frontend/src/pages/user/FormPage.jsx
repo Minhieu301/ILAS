@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import UserSidebar from "../../components/user/UserSidebar";
 import * as formAPI from "../../api/form";
@@ -18,19 +19,9 @@ const getFileTypeClassName = (item) => {
   return "other";
 };
 
-const resolveFileUrl = (fileUrl) => {
-  if (!fileUrl) return null;
-
-  try {
-    return new URL(fileUrl).toString();
-  } catch (_) {
-    const backendBase = "http://localhost:8080";
-    return `${backendBase}${fileUrl.startsWith("/") ? "" : "/"}${fileUrl}`;
-  }
-};
-
 const FormPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [forms, setForms] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +31,6 @@ const FormPage = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  const [previewModal, setPreviewModal] = useState(null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -112,39 +102,15 @@ const FormPage = () => {
     setCurrentPage(page);
   };
 
-  const handlePreview = async (item) => {
-    try {
-      if (!item?.fileUrl) {
-        window.alert("Không có file để xem trước");
-        return;
-      }
-
-      const normalizedUrl = resolveFileUrl(item.fileUrl);
-      if (!normalizedUrl) {
-        window.alert("Không thể xác định đường dẫn file");
-        return;
-      }
-
-      const fileType = (item.fileType || "").toLowerCase();
-      const isPdf = fileType.includes("pdf") || normalizedUrl.toLowerCase().includes(".pdf");
-      const isDoc = fileType.includes("doc") || normalizedUrl.toLowerCase().includes(".doc");
-      const previewUrl = isDoc
-        ? `https://docs.google.com/gview?url=${encodeURIComponent(normalizedUrl)}&embedded=true`
-        : normalizedUrl;
-
-      setPreviewModal({
-        title: item.title,
-        fileName: item.fileName,
-        fileType: item.fileType,
-        fileUrl: normalizedUrl,
-        previewUrl,
-        isPdf,
-        isDoc,
-      });
-    } catch (requestError) {
-      console.error("Error opening file preview:", requestError);
-      window.alert("Không thể mở file để xem trước. Vui lòng thử tải file.");
+  const handlePreview = (item) => {
+    if (!item?.templateId) {
+      window.alert("Không thể mở trang chi tiết biểu mẫu");
+      return;
     }
+
+    navigate(`/user/form/detail/${item.templateId}`, {
+      state: { form: item },
+    });
   };
 
   const handleDownload = async (templateId, fileUrl, fileName) => {
@@ -219,12 +185,6 @@ const FormPage = () => {
   const displayName = user?.fullName || user?.username || "Người dùng";
   const featuredForms = forms.slice(0, 2);
   const libraryForms = forms.length > 2 ? forms.slice(2) : forms;
-
-  const previewHeader = useMemo(() => {
-    if (!previewModal) return null;
-    const typeLabel = (previewModal.fileType || "DOCX").toUpperCase();
-    return `${previewModal.title || previewModal.fileName || "Xem biểu mẫu"} • ${typeLabel}`;
-  }, [previewModal]);
 
   return (
     <div className="udash-page formhub-page-shell">
@@ -411,41 +371,6 @@ const FormPage = () => {
           </div>
         </section>
 
-        {previewModal && (
-          <div className="formhub-preview-modal" role="dialog" aria-modal="true" aria-label={previewHeader || "Xem biểu mẫu"}>
-            <div className="formhub-preview-backdrop" onClick={() => setPreviewModal(null)} />
-            <div className="formhub-preview-modal-card">
-              <div className="formhub-preview-modal-topbar">
-                <div>
-                  <div className={`formhub-file-badge ${(previewModal.fileType || "other").toLowerCase().includes("pdf") ? "pdf" : (previewModal.fileType || "other").toLowerCase().includes("doc") ? "docx" : "other"}`}>
-                    {(previewModal.fileType || "DOCX").toUpperCase()}
-                  </div>
-                  <h3>{previewModal.title || previewModal.fileName || "Xem biểu mẫu"}</h3>
-                  <p>Nhấn phóng to để xem nội dung biểu mẫu rõ như tài liệu gốc.</p>
-                </div>
-
-                <div className="formhub-preview-modal-actions">
-                  <a className="formhub-preview-link" href={previewModal.fileUrl} target="_blank" rel="noreferrer">
-                    Mở tab mới
-                  </a>
-                  <button type="button" className="formhub-preview-close" onClick={() => setPreviewModal(null)}>
-                    ✕
-                  </button>
-                </div>
-              </div>
-
-              <div className="formhub-preview-frame-shell">
-                {previewModal.isPdf ? (
-                  <iframe title="preview-pdf" src={previewModal.previewUrl} className="formhub-preview-frame" />
-                ) : previewModal.isDoc ? (
-                  <iframe title="preview-doc" src={previewModal.previewUrl} className="formhub-preview-frame" />
-                ) : (
-                  <iframe title="preview-file" src={previewModal.previewUrl} className="formhub-preview-frame" />
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </main>
     </div>
   );

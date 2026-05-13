@@ -22,6 +22,7 @@ import DashboardPage from "./pages/user/DashboardPage";
 import UserSearch from "./pages/user/UserSearch";
 import UserSearchDetail from "./pages/user/UserSearchDetail";
 import FormPage from "./pages/user/FormPage";
+import FormDetailPage from "./pages/user/FormDetailPage";
 import ChatBotPage from "./components/chatbot/ChatBotPage";
 
 
@@ -89,6 +90,7 @@ const router = createBrowserRouter([
           { path: "search", element: <UserSearch /> },
           { path: "search/detail", element: <UserSearchDetail /> },
           { path: "form", element: <FormPage /> },
+          { path: "form/detail/:templateId", element: <FormDetailPage /> },
         ],
       },
     ],
