@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { renderAsync } from "docx-preview";
 import * as formAPI from "../../api/form";
 import "../../styles/user/FormDetailPage.css";
 
@@ -27,10 +28,13 @@ export default function FormDetailPage() {
   const { templateId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const docxViewerRef = useRef(null);
 
   const [form, setForm] = useState(location.state?.form || null);
   const [loading, setLoading] = useState(!location.state?.form);
   const [error, setError] = useState("");
+  const [viewerError, setViewerError] = useState("");
+  const [viewerLoading, setViewerLoading] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -78,15 +82,61 @@ export default function FormDetailPage() {
   }, [templateId, location.state]);
 
   const normalizedUrl = useMemo(() => resolveFileUrl(form?.fileUrl), [form?.fileUrl]);
+  const fileType = (form?.fileType || "").toLowerCase();
+  const isPdf = fileType.includes("pdf") || (normalizedUrl || "").toLowerCase().includes(".pdf");
+  const isDocx = fileType.includes("doc") || (normalizedUrl || "").toLowerCase().includes(".doc");
+
   const previewUrl = useMemo(() => {
-    if (!normalizedUrl) return null;
-    const fileType = (form?.fileType || "").toLowerCase();
-    const isDoc = fileType.includes("doc") || normalizedUrl.toLowerCase().includes(".doc");
-    if (isDoc) {
-      return `https://docs.google.com/gview?url=${encodeURIComponent(normalizedUrl)}&embedded=true`;
-    }
+    if (!normalizedUrl || !isPdf) return null;
     return normalizedUrl;
   }, [normalizedUrl, form?.fileType]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const renderDocx = async () => {
+      if (!isDocx || !normalizedUrl || !docxViewerRef.current) {
+        return;
+      }
+
+      try {
+        setViewerLoading(true);
+        setViewerError("");
+        const response = await fetch(normalizedUrl);
+        if (!response.ok) {
+          throw new Error(`Không tải được file DOCX (status ${response.status})`);
+        }
+
+        const buffer = await response.arrayBuffer();
+        if (cancelled || !docxViewerRef.current) return;
+
+        docxViewerRef.current.innerHTML = "";
+        await renderAsync(buffer, docxViewerRef.current, undefined, {
+          className: "docx-preview-viewer",
+          inWrapper: true,
+          ignoreWidth: false,
+          ignoreHeight: false,
+          breakPages: true,
+        });
+      } catch (requestError) {
+        console.error("Error rendering DOCX preview:", requestError);
+        if (!cancelled) {
+          setViewerError("Không thể hiển thị DOCX trực tiếp. Bạn có thể tải file hoặc mở tab mới.");
+        }
+      } finally {
+        if (!cancelled) setViewerLoading(false);
+      }
+    };
+
+    renderDocx();
+
+    return () => {
+      cancelled = true;
+      if (docxViewerRef.current) {
+        docxViewerRef.current.innerHTML = "";
+      }
+    };
+  }, [normalizedUrl, isDocx]);
 
   const handleDownload = async () => {
     if (!form?.fileUrl) return;
@@ -140,7 +190,13 @@ export default function FormDetailPage() {
           </div>
 
           <div className="formdetail-frame-shell compact">
-            {previewUrl ? (
+            {isDocx ? (
+              <div className="formdetail-docx-shell">
+                {viewerLoading && <div className="formdetail-frame-empty">Đang tải bản xem trước...</div>}
+                {viewerError && <div className="formdetail-frame-empty error">{viewerError}</div>}
+                <div ref={docxViewerRef} className="formdetail-docx-viewer" />
+              </div>
+            ) : previewUrl ? (
               <iframe title="form-preview" src={previewUrl} className="formdetail-frame" />
             ) : (
               <div className="formdetail-frame-empty">Không có đường dẫn xem trước cho biểu mẫu này.</div>

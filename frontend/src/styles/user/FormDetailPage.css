@@ -152,13 +152,25 @@
 .formdetail-viewer-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .formdetail-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 112px;
   background: #eaf1fa;
   color: #2d5c9f;
   border: 1px solid #d8e3f2;
+}
+
+.formdetail-viewer-actions .formdetail-type-badge {
+  min-width: 72px;
+  padding-left: 14px;
+  padding-right: 14px;
 }
 
 .formdetail-mini-btn.link {
@@ -192,9 +204,43 @@
   color: #6f8092;
 }
 
+.formdetail-frame-empty.error {
+  color: #b73434;
+  background: #fff5f5;
+}
+
+.formdetail-docx-shell {
+  min-height: 820px;
+  background: #f7f9fb;
+}
+
+.formdetail-docx-viewer {
+  padding: 24px;
+  background: #ffffff;
+  min-height: 820px;
+  overflow: auto;
+}
+
+.formdetail-docx-viewer .docx-preview-viewer {
+  width: 100%;
+}
+
+.formdetail-docx-viewer .docx-wrapper {
+  width: 100%;
+}
+
+.formdetail-docx-viewer .docx {
+  width: 100%;
+}
+
 @media (max-width: 1100px) {
   .formdetail-frame-shell,
   .formdetail-frame {
+    min-height: 620px;
+  }
+
+  .formdetail-docx-shell,
+  .formdetail-docx-viewer {
     min-height: 620px;
   }
 }
@@ -210,6 +256,11 @@
 
   .formdetail-frame-shell,
   .formdetail-frame {
+    min-height: 520px;
+  }
+
+  .formdetail-docx-shell,
+  .formdetail-docx-viewer {
     min-height: 520px;
   }
 }
