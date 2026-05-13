@@ -22,7 +22,7 @@ import DashboardPage from "./pages/user/DashboardPage";
 import UserSearch from "./pages/user/UserSearch";
 import UserSearchDetail from "./pages/user/UserSearchDetail";
 import FormPage from "./pages/user/FormPage";
-import ChatHistoryPage from "./components/chatbot/ChatHistoryPage";
+import ChatBotPage from "./components/chatbot/ChatBotPage";
 
 
 // ===== Moderator Pages =====
@@ -67,7 +67,7 @@ const router = createBrowserRouter([
         path: "chat/history",
         element: (
           <PrivateRoute allowedRoles={["USER", "MODERATOR", "MODERATOR"]}>
-            <ChatHistoryPage />
+            <ChatBotPage />
           </PrivateRoute>
         ),
       },

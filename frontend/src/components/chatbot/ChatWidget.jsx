@@ -23,17 +23,15 @@ export default function ChatWidget() {
   );
 
   const quickQuestions = [
-    "Điều 35 nói gì?",
-    "Khoản 1 thì sao?",
     "Nghỉ việc cần báo trước bao nhiêu ngày?",
     "Người lao động có bao nhiêu ngày nghỉ lễ?",
     "Điều kiện hưởng trợ cấp thôi việc là gì?",
-    "Thủ tục khiếu nại phải làm thế nào?",
     "Mức phạt vi phạm hành chính là bao nhiêu?",
     "Hợp đồng thử việc tối đa được bao lâu?",
   ];
 
-  // Conversation ID will be assigned by backend; keep client-side null until backend returns
+  const createConversationId = () =>
+    `widget-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const getWelcomeMessages = () => [
     {
@@ -122,11 +120,14 @@ export default function ChatWidget() {
     setLoading(true);
 
     try {
-      const res = await sendChatMessage(userId, text, true, conversationId);
+      const activeConversationId = conversationId || createConversationId();
+      if (!conversationId) {
+        setConversationId(activeConversationId);
+      }
+
+      const res = await sendChatMessage(userId, text, true, activeConversationId);
       const botText = res.answer || "";
       const suggestions = extractSuggestions(botText);
-      // update conversationId from backend if provided
-      if (res?.conversationId) setConversationId(res.conversationId);
       setMessages((p) => [...p, { sender: "bot", text: botText, suggestions }]);
     } catch {
       setMessages((p) => [
@@ -146,10 +147,14 @@ export default function ChatWidget() {
     setLoading(true);
 
     try {
-      const res = await sendChatMessage(userId, overrideText, true, conversationId);
+      const activeConversationId = conversationId || createConversationId();
+      if (!conversationId) {
+        setConversationId(activeConversationId);
+      }
+
+      const res = await sendChatMessage(userId, overrideText, true, activeConversationId);
       const botText = res.answer || "";
       const suggestions = extractSuggestions(botText);
-      if (res?.conversationId) setConversationId(res.conversationId);
       setMessages((p) => [...p, { sender: "bot", text: botText, suggestions }]);
     } catch {
       setMessages((p) => [
@@ -167,12 +172,6 @@ export default function ChatWidget() {
   const handleExpand = () => {
     setOpen(false);
     navigate("/chat/history");
-  };
-
-  // Start a fresh conversation (user-triggered)
-  const startNewChat = () => {
-    setConversationId(null);
-    setMessages(getWelcomeMessages());
   };
 
   const handleToggleWidget = () => {
@@ -202,9 +201,6 @@ export default function ChatWidget() {
           <span>AI Legal Assistant</span>
 
           <div className="header-actions">
-            <button className="icon-btn" onClick={startNewChat} title="New Chat">
-              ⟳
-            </button>
             <button className="icon-btn" onClick={handleExpand} title="Phóng to">
               ↗
             </button>

@@ -1,5 +1,3 @@
-# ai/gemini_service.py — ILAS Legal Edition (Gemini version, kept parallel to Groq)
-
 import os
 import requests
 from dotenv import load_dotenv
@@ -12,19 +10,6 @@ load_dotenv(dotenv_path=env_path)
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
-
-
-def _candidate_models():
-    raw = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-1.5-flash,gemini-1.5-pro")
-    extra = [m.strip() for m in raw.split(",") if m.strip()]
-    ordered = [MODEL_NAME] + extra
-    seen = set()
-    unique = []
-    for m in ordered:
-        if m not in seen:
-            seen.add(m)
-            unique.append(m)
-    return unique
 
 
 def _post_to_gemini(messages, temperature: float, max_tokens: int) -> str:
@@ -66,52 +51,43 @@ def _post_to_gemini(messages, temperature: float, max_tokens: int) -> str:
                 "parts": [{"text": "\n\n".join(system_parts)}]
             }
 
-        last_error = None
-        for model in _candidate_models():
-            res = requests.post(
-                API_URL.format(model=model),
-                params={"key": API_KEY},
-                headers=headers,
-                json=payload,
-                timeout=40,
-            )
+        res = requests.post(
+            API_URL.format(model=MODEL_NAME),
+            params={"key": API_KEY},
+            headers=headers,
+            json=payload,
+            timeout=40,
+        )
 
-            try:
-                j = res.json()
-            except Exception as e:
-                print("Gemini JSON ERROR:", e, "Raw:", res.text[:500])
-                return "AI không trả về dữ liệu hợp lệ (JSON error)."
+        try:
+            j = res.json()
+        except Exception as e:
+            print("Gemini JSON ERROR:", e, "Raw:", res.text[:500])
+            return "AI không trả về dữ liệu hợp lệ (JSON error)."
 
-            if "error" in j:
-                err = j.get("error", {})
-                status = str(err.get("status", "")).upper()
-                message = str(err.get("message", ""))
-                print(f"Gemini API ERROR [{model}] {status}: {message}")
-                last_error = j
-                if status == "NOT_FOUND":
-                    continue
-                return "Hệ thống AI Gemini đang lỗi cấu hình hoặc quá tải. Vui lòng thử lại."
+        if "error" in j:
+            err = j.get("error", {})
+            status = str(err.get("status", "")).upper()
+            message = str(err.get("message", ""))
+            print(f"Gemini API ERROR [{MODEL_NAME}] {status}: {message}")
+            return "Hệ thống AI Gemini đang lỗi cấu hình hoặc quá tải. Vui lòng thử lại."
 
-            candidates = j.get("candidates", [])
-            if not candidates:
-                print(f"Gemini EMPTY CANDIDATES [{model}]", j)
-                last_error = j
-                continue
+        candidates = j.get("candidates", [])
+        if not candidates:
+            print("Gemini EMPTY CANDIDATES:", j)
+            return "AI không trả về kết quả (no candidates)."
 
-            candidate = candidates[0]
-            content = candidate.get("content", {})
-            parts = content.get("parts", []) if isinstance(content, dict) else []
-            text_chunks = [part.get("text", "") for part in parts if isinstance(part, dict)]
-            content_text = "".join(text_chunks).strip()
+        candidate = candidates[0]
+        content = candidate.get("content", {})
+        parts = content.get("parts", []) if isinstance(content, dict) else []
+        text_chunks = [part.get("text", "") for part in parts if isinstance(part, dict)]
+        content_text = "".join(text_chunks).strip()
 
-            if content_text:
-                return content_text
+        if not content_text:
+            print("Gemini EMPTY CONTENT:", j)
+            return "AI không sinh ra nội dung trả lời."
 
-            print(f"Gemini EMPTY CONTENT [{model}]", j)
-            last_error = j
-
-        print("Gemini ALL MODELS FAILED:", last_error)
-        return "AI không trả về kết quả phù hợp (Gemini fallback failed)."
+        return content_text
 
     except Exception as e:
         print("Gemini REQUEST ERROR:", repr(e))
@@ -127,18 +103,19 @@ def guarded_completion(
     max_tokens: int = 900
 ) -> str:
     """
-    ILAS Legal Answer Engine — Gemini version.
-    Giữ cùng contract với groq_service.py để backend dễ chuyển đổi.
+    ILAS Legal Answer Engine — Strict + Summarization Mode
+    (Đã tối ưu để AI nói chuyện TỰ NHIÊN, THÂN THIỆN)
     """
 
+    # Ép kiểu an toàn (FE hay gửi "0.7", "500" dạng string)
     try:
         temperature = float(temperature)
-    except Exception:
+    except:
         temperature = 0.15
 
     try:
         max_tokens = int(max_tokens)
-    except Exception:
+    except:
         max_tokens = 900
 
     system_prompt = """
@@ -152,7 +129,6 @@ Nhiệm vụ của bạn là giải đáp thắc mắc cho người lao động 
 4. TỔNG HỢP HỢP LÝ: Nếu các điểm/khoản trong ngữ cảnh có số liệu, bạn được phép tổng hợp và tính toán (liệt kê rõ phép tính).
 5. THIẾU THÔNG TIN: Nếu ngữ cảnh không có thông tin cần thiết → trả lời tự nhiên: "Rất tiếc, theo dữ liệu hiện tại của hệ thống ILAS, tôi chưa tìm thấy quy định cụ thể về vấn đề này để hỗ trợ bạn."
 """
-
     conversation_section = ""
     if conversation_context and conversation_context.strip():
         conversation_section = f"""
@@ -232,7 +208,7 @@ def rewrite_legal_query(user_question: str, conversation_context: str = "") -> s
     Giúp Semantic Search tìm luật chính xác hơn.
     """
     system_prompt = """
-Bạn là chuyên gia phân tích ngôn ngữ pháp lý.
+Bạn là chuyên gia phân tích ngôn ngữ pháp lý. 
 Nhiệm vụ của bạn là chuyển đổi câu hỏi thông tục của người dùng thành MỘT CÂU TRUY VẤN TỪ KHÓA pháp lý chuẩn xác để tìm kiếm trong cơ sở dữ liệu luật lao động.
 
 QUY TẮC BẮT BUỘC:
@@ -254,8 +230,10 @@ NGỮ CẢNH HỘI THOẠI TRƯỚC ĐÓ:
         {"role": "user", "content": f'{conversation_section}Hãy tối ưu câu hỏi này: "{user_question}"'},
     ]
 
+    # Gọi AI bằng hàm _post_to_gemini có sẵn, temp thấp để câu từ chuẩn xác
     optimized = _post_to_gemini(messages, temperature=0.1, max_tokens=100)
 
+    # Nếu AI lỗi hoặc trả về rỗng, dùng tạm câu hỏi cũ
     if not optimized or "Hệ thống AI đang gặp sự cố" in optimized or "JSON error" in optimized:
         return user_question
 

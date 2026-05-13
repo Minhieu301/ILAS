@@ -374,7 +374,7 @@ const UserSearchDetail = () => {
               ))}
               {chatHistoryLocal.length === 0 && (
                 <div className="chat-msg bot">
-                  <div className="chat-msg-text">Hello! I'm here to clarify any part of the legal summary.</div>
+                  <div className="chat-msg-text">Xin chào, tôi có thể giúp gì cho bạn.</div>
                 </div>
               )}
             </div>

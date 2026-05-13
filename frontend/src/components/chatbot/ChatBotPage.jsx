@@ -34,7 +34,7 @@ function createPendingId() {
   return `pending-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-export default function ChatHistoryPage() {
+export default function ChatBotPage() {
   const [conversations, setConversations] = useState({});
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [input, setInput] = useState("");
@@ -61,9 +61,6 @@ export default function ChatHistoryPage() {
     "Quyền nghỉ ốm hưởng lương như thế nào?",
     "Ai được hưởng trợ cấp thất nghiệp?",
   ];
-
-  // Remove long-lived client-side conversation IDs. Use temporary pending ids
-  // and adopt backend-provided `conversationId` when available.
 
   const getDeletedConversationStorageKey = () => `chat-deleted-conversations-${userId || "guest"}`;
 
@@ -115,7 +112,7 @@ export default function ChatHistoryPage() {
       });
 
       Object.values(next).forEach((c) => {
-        c.logs.sort((a, b) => toDateValue(a.createdAt || a.created_at) - toDateValue(b.createdAt || b.created_at));
+        c.logs.sort((a, b) => toDateValue(a.createdAt || a.created_at) - toDateValue(a.createdAt || a.created_at));
       });
 
       setConversations(next);
@@ -180,7 +177,6 @@ export default function ChatHistoryPage() {
       let conversationId = activeConversationId;
 
       if (!conversationId) {
-        // create a temporary draft id while waiting for backend to return UUID
         conversationId = createPendingId();
         draftConversationRef.current = conversationId;
         const nowIso = new Date().toISOString();
@@ -234,7 +230,6 @@ export default function ChatHistoryPage() {
       const data = await sendChatMessage(userId, question, true, conversationId);
       const doneIso = new Date().toISOString();
 
-      // Update optimistic log with backend answer
       setConversations((prev) => {
         const existing = prev[conversationId] || {
           id: conversationId,
@@ -259,11 +254,9 @@ export default function ChatHistoryPage() {
           ),
         };
 
-        // If backend returned a real conversationId (UUID), migrate the draft key
         const backendConvId = data?.conversationId || conversationId;
         if (backendConvId && backendConvId !== conversationId) {
           const next = { ...prev };
-          // assign updated conversation under backend id and remove draft
           next[backendConvId] = { ...updated, id: backendConvId };
           delete next[conversationId];
           return next;
@@ -275,7 +268,6 @@ export default function ChatHistoryPage() {
         };
       });
 
-      // If backend provided a UUID, switch selection to it
       if (data?.conversationId && data.conversationId !== conversationId) {
         setSelectedConversationId(data.conversationId);
       }
