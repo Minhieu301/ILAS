@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { Plus, Edit2, Trash2, Eye, EyeOff, FileText, Calendar, User, Search, Filter } from "lucide-react";
 import ModeratorWorkspace from "../../components/moderator/ModeratorWorkspace";
 import "../../styles/moderator/FormPage.css";
 import {
@@ -127,57 +128,77 @@ export default function FormPage() {
 
           {/* Thanh tìm kiếm + nút thêm */}
           <div className="search-bar">
-            <input
-              type="text"
-              placeholder="🔍 Tìm kiếm biểu mẫu..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <div className="search-wrapper">
+              <Search size={18} className="search-icon" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm biểu mẫu..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
 
             {/* Dropdown lọc trạng thái */}
-            <select
-              className="filter-select"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="ALL">Tất cả</option>
-              <option value="draft">📝 Nháp</option>
-              <option value="approved">📢 Đang đăng</option>
-              <option value="archived">🙈 Đã ẩn</option>
-              <option value="pending">⏳ Chờ duyệt</option>
-              <option value="rejected">❌ Bị từ chối</option>
-            </select>
+            <div className="filter-wrapper">
+              <Filter size={18} className="filter-icon" />
+              <select
+                className="filter-select"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="ALL">Tất cả trạng thái</option>
+                <option value="draft">Nháp</option>
+                <option value="approved">Đang đăng</option>
+                <option value="archived">Đã ẩn</option>
+                <option value="pending">Chờ duyệt</option>
+                <option value="rejected">Bị từ chối</option>
+              </select>
+            </div>
 
             <button className="btn-create" onClick={handleCreate}>
-              ➕ Thêm biểu mẫu
+              <Plus size={18} />
+              Thêm biểu mẫu
             </button>
           </div>
 
           <div className="form-list">
             {filteredForms.length === 0 ? (
-              <p className="empty-text">📭 Không có biểu mẫu phù hợp.</p>
+              <p className="empty-text">Không có biểu mẫu phù hợp</p>
             ) : (
               filteredForms.map((form) => {
                 const status = (form.status || "draft").toLowerCase();
                 const isPublished = status === "approved";
 
                 return (
-                  <div key={form.templateId} className="form-card shadow">
+                  <div key={form.templateId} className="form-card">
                     <div className="form-header">
-                      <div>
-                        <h3>{form.title}</h3>
-                        <p className="meta">
-                          📁 {form.category} | 🕓 {new Date(form.createdAt).toLocaleString("vi-VN")}
-                        </p>
+                      <div className="form-title-section">
+                        <div className="form-title-wrapper">
+                          <FileText size={20} className="form-icon" />
+                          <div>
+                            <h3>{form.title}</h3>
+                            <p className="meta">
+                              <span className="meta-item">
+                                {form.category}
+                              </span>
+                              <span className="meta-divider">•</span>
+                              <span className="meta-item">
+                                <Calendar size={13} className="inline-icon" />
+                                {new Date(form.createdAt).toLocaleDateString("vi-VN")}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
                       </div>
                       <span className={`status-badge ${status}`}>{form.status}</span>
                     </div>
 
-                    <p className="description">{form.description || "Không có mô tả."}</p>
+                    <p className="description">{form.description || "Không có mô tả"}</p>
 
                     <div className="form-footer">
                       <div className="moderator-info">
-                        👤 {form.moderatorName} ({form.moderatorEmail})
+                        <User size={16} className="inline-icon" />
+                        {form.moderatorName}
                       </div>
 
                       <div className="form-actions">
@@ -187,20 +208,22 @@ export default function FormPage() {
                           disabled={isPublished}
                           title={
                             isPublished
-                              ? "Không thể sửa biểu mẫu đang đăng. Hãy ẩn trước."
+                              ? "Không thể sửa biểu mẫu đang đăng"
                               : "Chỉnh sửa biểu mẫu"
                           }
                         >
-                          ✏️ Sửa
+                          <Edit2 size={16} />
+                          Sửa
                         </button>
 
                         {isPublished ? (
                           <button
                             className="btn danger"
                             onClick={() => handleHide(form.templateId)}
-                            title="Ẩn biểu mẫu khỏi user"
+                            title="Ẩn biểu mẫu khỏi người dùng"
                           >
-                            🙈 Ẩn
+                            <EyeOff size={16} />
+                            Ẩn
                           </button>
                         ) : (
                           <button
@@ -208,7 +231,8 @@ export default function FormPage() {
                             onClick={() => handlePublish(form.templateId)}
                             title="Đăng biểu mẫu"
                           >
-                            📢 Đăng
+                            <Eye size={16} />
+                            Đăng
                           </button>
                         )}
 
@@ -218,11 +242,12 @@ export default function FormPage() {
                           disabled={isPublished}
                           title={
                             isPublished
-                              ? "Không thể xóa biểu mẫu đang đăng. Hãy ẩn trước."
+                              ? "Không thể xóa biểu mẫu đang đăng"
                               : "Xóa biểu mẫu"
                           }
                         >
-                          🗑️ Xóa
+                          <Trash2 size={16} />
+                          Xóa
                         </button>
                       </div>
                     </div>
@@ -234,7 +259,8 @@ export default function FormPage() {
                         rel="noreferrer"
                         className="file-link"
                       >
-                        📄 Xem file đính kèm
+                        <FileText size={14} className="inline-icon" />
+                        Xem file đính kèm
                       </a>
                     )}
                   </div>

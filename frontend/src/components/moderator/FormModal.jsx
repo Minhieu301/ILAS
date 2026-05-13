@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Upload, Save, X, File, AlertCircle } from "lucide-react";
 import { uploadFormFile } from "../../api/form";
 import "../../styles/moderator/FormModal.css";
 
@@ -35,7 +36,7 @@ export default function FormModal({ moderatorId, formData, onSave, onClose }) {
   const handleFileChange = (e) => setFile(e.target.files[0]);
 
   const handleUpload = async () => {
-    if (!file) return alert("⚠️ Vui lòng chọn file trước khi tải lên!");
+    if (!file) return alert("Vui lòng chọn file trước khi tải lên!");
     try {
       setUploading(true);
       const res = await uploadFormFile(moderatorId, file);
@@ -43,18 +44,18 @@ export default function FormModal({ moderatorId, formData, onSave, onClose }) {
         setForm((prev) => ({ ...prev, fileUrl: res.data.fileUrl }));
         alert("✅ File đã tải lên thành công!");
       } else {
-        alert("❌ Không nhận được fileUrl từ server!");
+        alert("Không nhận được fileUrl từ server!");
       }
     } catch (err) {
       console.error("Lỗi upload file:", err);
-      alert("❌ Lỗi khi tải file!");
+      alert("Lỗi khi tải file!");
     } finally {
       setUploading(false);
     }
   };
 
   const handleSave = async () => {
-    if (!form.title.trim()) return alert("⚠️ Vui lòng nhập tiêu đề!");
+    if (!form.title.trim()) return alert("Vui lòng nhập tiêu đề!");
 
     if (!form.fileUrl) {
       const confirmUpload = window.confirm(
@@ -70,70 +71,109 @@ export default function FormModal({ moderatorId, formData, onSave, onClose }) {
   return (
     <div className="modal-overlay">
       <div className="modal">
-        <h3>{formData ? "✏️ Chỉnh sửa biểu mẫu" : "➕ Tạo mới biểu mẫu"}</h3>
-
-        <input
-          type="text"
-          placeholder="Tiêu đề biểu mẫu"
-          value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-        />
-
-        <input
-          type="text"
-          placeholder="Phân loại (vd: Nghỉ phép, Hợp đồng...)"
-          value={form.category}
-          onChange={(e) => setForm({ ...form, category: e.target.value })}
-        />
-
-        <textarea
-          placeholder="Mô tả biểu mẫu"
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-        />
-
-        {/* Upload file */}
-        <div className="file-upload">
-          <input
-            type="file"
-            accept=".pdf,.doc,.docx"
-            onChange={handleFileChange}
-          />
-          <button onClick={handleUpload} disabled={uploading}>
-            {uploading ? "⏳ Đang tải..." : "📎 Tải file"}
+        <div className="modal-header">
+          <h3>{formData ? "Chỉnh sửa biểu mẫu" : "Tạo mới biểu mẫu"}</h3>
+          <button className="modal-close" onClick={onClose}>
+            <X size={20} />
           </button>
         </div>
 
-        {/* Link xem file */}
-        {form.fileUrl && (
-          <a
-            href={form.fileUrl}
-            target="_blank"
-            rel="noreferrer"
-            style={{ display: "block", marginTop: "8px", color: "#007bff" }}
-          >
-            📄 Xem file đã tải
-          </a>
-        )}
+        <div className="modal-body">
+          <div className="form-group">
+            <label>Tiêu đề biểu mẫu *</label>
+            <input
+              type="text"
+              placeholder="Nhập tiêu đề..."
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+            />
+          </div>
 
-        {/* Preview PDF */}
-        {form.fileUrl?.endsWith(".pdf") && (
-          <iframe
-            src={form.fileUrl}
-            title="preview"
-            width="100%"
-            height="300px"
-            style={{
-              border: "1px solid #ccc",
-              borderRadius: "5px",
-              marginTop: "10px",
-            }}
-          ></iframe>
-        )}
+          <div className="form-group">
+            <label>Phân loại</label>
+            <input
+              type="text"
+              placeholder="vd: Nghỉ phép, Hợp đồng..."
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Mô tả biểu mẫu</label>
+            <textarea
+              placeholder="Nhập mô tả..."
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows="4"
+            />
+          </div>
+
+          {/* Upload file */}
+          <div className="form-group">
+            <label>Tệp đính kèm</label>
+            <div className="file-upload">
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                onChange={handleFileChange}
+                id="file-input"
+              />
+              <label htmlFor="file-input" className="file-input-label">
+                <Upload size={18} />
+                Chọn file
+              </label>
+              <button
+                onClick={handleUpload}
+                disabled={uploading || !file}
+                className="btn-upload"
+              >
+                {uploading ? "Đang tải..." : "Tải lên"}
+              </button>
+            </div>
+            {file && <p className="file-name">📄 {file.name}</p>}
+          </div>
+
+          {/* Link xem file */}
+          {form.fileUrl && (
+            <div className="form-group file-preview">
+              <p className="file-link-label">
+                <File size={14} />
+                File đã tải:
+              </p>
+              <a
+                href={form.fileUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="file-link"
+              >
+                Xem file
+              </a>
+            </div>
+          )}
+
+          {/* Preview PDF */}
+          {form.fileUrl?.endsWith(".pdf") && (
+            <div className="pdf-preview">
+              <iframe
+                src={form.fileUrl}
+                title="preview"
+                width="100%"
+                height="300px"
+              ></iframe>
+            </div>
+          )}
+        </div>
 
         <div className="modal-actions">
-          <button onClick={handleSave}>💾 Lưu</button>
-          <button onClick={onClose}>❌ Hủy</button>
+          <button className="btn-primary" onClick={handleSave}>
+            <Save size={16} />
+            Lưu
+          </button>
+          <button className="btn-secondary" onClick={onClose}>
+            <X size={16} />
+            Hủy
+          </button>
         </div>
       </div>
     </div>
