@@ -11,7 +11,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +31,22 @@ public class AdminReportService {
     private final FeedbackRepository feedbackRepository;
     private final PageViewLogRepository pageViewLogRepository;
     private final LawRepository lawRepository;
+
+        private static final Map<String, String> PAGE_LABELS = Map.ofEntries(
+            Map.entry("/", "Trang chủ"),
+            Map.entry("/about", "Giới thiệu"),
+            Map.entry("/search", "Tra cứu văn bản"),
+            Map.entry("/search/detail", "Chi tiết kết quả tra cứu"),
+            Map.entry("/chat", "Chat pháp lý"),
+            Map.entry("/chat/history", "Lịch sử chat"),
+            Map.entry("/profile", "Hồ sơ người dùng"),
+            Map.entry("/user/dashboard", "Dashboard người dùng"),
+            Map.entry("/user/search", "Tra cứu (User)"),
+            Map.entry("/user/search/detail", "Chi tiết tra cứu (User)"),
+            Map.entry("/user/form", "Danh sách biểu mẫu"),
+            Map.entry("/user/form/detail/:id", "Chi tiết biểu mẫu"),
+            Map.entry("/user/feedback", "Phản hồi người dùng")
+        );
 
     public ReportResponse getReport(String range, String reportType) {
         DateRange currentRange = resolveRange(range);
@@ -166,19 +184,20 @@ public class AdminReportService {
     private List<ReportResponse.TopContentItem> buildTopContents(DateRange range) {
         List<PageViewLog> views = pageViewLogRepository.findByCreatedAtBetween(range.start(), range.end());
 
-        Map<String, Long> pathCounts = views.stream()
-                .map(PageViewLog::getPath)
-                .filter(path -> path != null && !path.isBlank())
-                .collect(Collectors.groupingBy(
-                        path -> path,
-                        Collectors.counting()
-                ));
+        Map<String, Long> pathCounts = new HashMap<>();
+        for (PageViewLog view : views) {
+            String normalizedPath = normalizeTrackedPath(view.getPath());
+            if (normalizedPath == null) {
+            continue;
+            }
+            pathCounts.merge(normalizedPath, 1L, Long::sum);
+        }
 
         List<ReportResponse.TopContentItem> topByView = pathCounts.entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue(Comparator.reverseOrder()))
                 .limit(5)
                 .map(entry -> ReportResponse.TopContentItem.builder()
-                        .title(cleanPath(entry.getKey()))
+                .title(resolvePageTitle(entry.getKey()))
                         .views(entry.getValue())
                         .downloads(0L) // hệ thống chưa log download; giữ 0 để phản ánh thực tế
                         .build())
@@ -212,12 +231,76 @@ public class AdminReportService {
                 .orElse("Nội dung");
     }
 
-    private String cleanPath(String path) {
-        String cleaned = path.trim();
+    private String normalizeTrackedPath(String rawPath) {
+        if (rawPath == null || rawPath.isBlank()) {
+            return null;
+        }
+
+        String normalized = rawPath.trim();
+
+        int queryIndex = normalized.indexOf('?');
+        if (queryIndex >= 0) {
+            normalized = normalized.substring(0, queryIndex);
+        }
+
+        int hashIndex = normalized.indexOf('#');
+        if (hashIndex >= 0) {
+            normalized = normalized.substring(0, hashIndex);
+        }
+
+        normalized = normalized.replaceAll("/+", "/");
+        if (normalized.length() > 1 && normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+
+        if (!normalized.startsWith("/")) {
+            normalized = "/" + normalized;
+        }
+
+        if (normalized.startsWith("/admin") || normalized.startsWith("/moderator")) {
+            return null;
+        }
+
+        return toRouteTemplate(normalized);
+    }
+
+    private String toRouteTemplate(String path) {
+        String result = path;
+        if (result.matches("^/user/form/detail/\\d+$")) {
+            return "/user/form/detail/:id";
+        }
+        if (result.matches("^/form/detail/\\d+$")) {
+            return "/form/detail/:id";
+        }
+        return result;
+    }
+
+    private String resolvePageTitle(String normalizedPath) {
+        String label = PAGE_LABELS.get(normalizedPath);
+        if (label != null) {
+            return label;
+        }
+
+        String cleaned = normalizedPath;
         if (cleaned.startsWith("/")) {
             cleaned = cleaned.substring(1);
         }
-        return cleaned.isBlank() ? "Trang" : cleaned;
+        if (cleaned.isBlank()) {
+            return "Trang chủ";
+        }
+
+        List<String> segments = new ArrayList<>();
+        for (String segment : cleaned.split("/")) {
+            if (!segment.isBlank()) {
+                segments.add(segment);
+            }
+        }
+
+        if (segments.isEmpty()) {
+            return "Trang";
+        }
+
+        return String.join(" / ", segments);
     }
 
     private double calcChangePercent(long current, long previous) {

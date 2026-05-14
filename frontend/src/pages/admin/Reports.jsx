@@ -22,6 +22,7 @@ import {
   LabelList,
 } from "recharts";
 import { reportAPI } from "../../api/report";
+import { trackAPI } from "../../api/track";
 import "../../styles/admin/Reports.css";
 
 const colorPalette = ["#1a5ca6", "#10b981", "#f59e0b", "#8b5cf6", "#06b6d4"];
@@ -29,6 +30,7 @@ const formatNumber = (value) =>
   typeof value === "number" ? value.toLocaleString("vi-VN") : "0";
 const formatChange = (value = 0) =>
   `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
+const formatPercent = (value = 0) => `${(value * 100).toFixed(1)}%`;
 const chartTooltipStyle = {
   backgroundColor: "#ffffff",
   border: "1px solid #e2e8f0",
@@ -64,7 +66,7 @@ export default function Reports() {
   });
   const [weeklyData, setWeeklyData] = useState([]);
   const [categoryData, setCategoryData] = useState([]);
-  const [topContent, setTopContent] = useState([]);
+  const [topSearches, setTopSearches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -80,7 +82,17 @@ export default function Reports() {
   const loadReport = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const res = await reportAPI.getReport(dateRange, reportType);
+    const [res, searchRes] = await Promise.all([
+      reportAPI.getReport(dateRange, reportType),
+      trackAPI.getTopSearches(5),
+    ]);
+
+    if (searchRes?.success && Array.isArray(searchRes.data)) {
+      setTopSearches(searchRes.data.slice(0, 5));
+    } else {
+      setTopSearches([]);
+    }
+
     if (res?.success && res.data) {
       const summary = res.data.stats || {};
       setStats({
@@ -122,7 +134,6 @@ export default function Reports() {
         });
       }
       setCategoryData(categories);
-      setTopContent((res.data.topContents || []).slice(0, 5));
     } else {
       setError(res?.message || "Không thể tải báo cáo");
     }
@@ -139,8 +150,8 @@ export default function Reports() {
       !error &&
       weeklyData.length === 0 &&
       categoryData.length === 0 &&
-      topContent.length === 0,
-    [loading, error, weeklyData, categoryData, topContent]
+      topSearches.length === 0,
+    [loading, error, weeklyData, categoryData, topSearches]
   );
 
   const kpiCards = useMemo(
@@ -184,6 +195,11 @@ export default function Reports() {
   const categoryTotal = useMemo(
     () => categoryData.reduce((sum, item) => sum + (item.value || 0), 0),
     [categoryData]
+  );
+
+  const topSearchTotal = useMemo(
+    () => topSearches.reduce((sum, item) => sum + (item.count || 0), 0),
+    [topSearches]
   );
 
   const renderChange = (value) => (
@@ -382,52 +398,40 @@ export default function Reports() {
           </div>
 
           <div className="reports-chart reports-chart-full">
-            <h3 className="reports-chart-title">Top Trang Được Truy Cập</h3>
-            {topContent.length === 0 ? (
+            <div className="reports-top-header">
+              <h3 className="reports-chart-title">Top Từ Khóa Tìm Kiếm</h3>
+              <span className="reports-top-meta">
+                Tổng lượt tìm: {formatNumber(topSearchTotal)}
+              </span>
+            </div>
+            {topSearches.length === 0 ? (
               <div className="report-empty">Chưa có dữ liệu</div>
             ) : (
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={topContent} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                  <defs>
-                    <linearGradient id="viewsGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3b82f6" />
-                      <stop offset="100%" stopColor="#1d4ed8" />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis 
-                    dataKey="title" 
-                    tick={axisTickStyle}
-                    interval={0}
-                    angle={-15}
-                    textAnchor="end"
-                    height={60}
-                    tickFormatter={(value) => truncateLabel(value, 20)}
-                  />
-                  <YAxis 
-                    tick={axisTickStyle}
-                    allowDecimals={false}
-                    label={{ value: 'Lượt truy cập', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#64748b' } }}
-                  />
-                  <Tooltip 
-                    contentStyle={chartTooltipStyle}
-                    formatter={(value) => [formatNumber(value), 'Lượt xem']}
-                  />
-                  <Bar 
-                    dataKey="views" 
-                    fill="url(#viewsGradient)" 
-                    name="Lượt xem"
-                    radius={[8, 8, 0, 0]}
-                  >
-                    <LabelList
-                      dataKey="views"
-                      position="top"
-                      formatter={(val) => formatNumber(val)}
-                      style={{ fill: "#1e293b", fontSize: 12, fontWeight: 700 }}
-                    />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="top-pages-list">
+                {topSearches.map((item, index) => {
+                  const ratio = topSearchTotal > 0 ? (item.count || 0) / topSearchTotal : 0;
+                  return (
+                    <article key={`${item.keyword}-${index}`} className="top-page-item">
+                      <div className="top-page-rank">#{index + 1}</div>
+                      <div className="top-page-main">
+                        <div className="top-page-title" title={item.keyword}>
+                          {truncateLabel(item.keyword || "(trống)", 52)}
+                        </div>
+                        <div className="top-page-bar-track" aria-hidden="true">
+                          <span
+                            className="top-page-bar-fill"
+                            style={{ width: `${Math.max(6, ratio * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="top-page-metrics">
+                        <strong>{formatNumber(item.count || 0)}</strong>
+                        <span>{formatPercent(ratio)}</span>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
             )}
           </div>
         </>

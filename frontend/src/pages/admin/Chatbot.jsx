@@ -5,6 +5,11 @@ import {
   MessageSquare,
   Database,
   Power,
+  BarChart3,
+  Shield,
+  Settings,
+  AlertCircle,
+  CheckCircle,
 } from "lucide-react";
 import api from "../../api/api";
 import "../../styles/admin/chatbot.css";
@@ -18,9 +23,20 @@ export default function Chatbot() {
     welcomeMessage: "Xin chào! Tôi có thể giúp gì cho bạn?",
     responseDelay: 500,
     maxHistory: 50,
-    dataSource: "all",
-    temperature: 0.7,
-    maxTokens: 500,
+  });
+
+  const [laws, setLaws] = useState([]);
+  const [selectedLaws, setSelectedLaws] = useState({});
+
+  const [limits, setLimits] = useState({
+    queriesPerUser: 50,
+    maxTokenLength: 2048,
+  });
+
+  const [alerts, setAlerts] = useState({
+    systemDowntime: true,
+    highErrorRate: true,
+    securityBreach: true,
   });
 
   const [stats, setStats] = useState({
@@ -39,6 +55,23 @@ export default function Chatbot() {
   const [showHistory, setShowHistory] = useState(false);
 
   // =====================
+  // LOAD LAWS
+  // =====================
+  useEffect(() => {
+    api.get("/chatbot/admin/laws")
+      .then((res) => {
+        const lawsData = res.data || [];
+        setLaws(lawsData);
+        const selected = {};
+        lawsData.forEach((law, idx) => {
+          selected[law.lawId] = idx === 0;
+        });
+        setSelectedLaws(selected);
+      })
+      .catch((err) => console.error("Load laws failed", err));
+  }, []);
+
+  // =====================
   // LOAD SETTINGS
   // =====================
   useEffect(() => {
@@ -51,8 +84,6 @@ export default function Chatbot() {
             ...data,
             responseDelay: data.responseDelay ?? prev.responseDelay ?? 500,
             maxHistory: data.maxHistory ?? prev.maxHistory ?? 50,
-            temperature: data.temperature ?? prev.temperature ?? 0.7,
-            maxTokens: data.maxTokens ?? prev.maxTokens ?? 500,
           }));
         }
       })
@@ -143,7 +174,14 @@ export default function Chatbot() {
   // =====================
   const handleSave = async () => {
     try {
-      await api.post("/chatbot/admin/settings", settings);
+      // Save settings + selected laws
+      const payload = {
+        ...settings,
+        selectedLawIds: laws
+          .filter((law) => selectedLaws[law.lawId])
+          .map((law) => law.lawId),
+      };
+      await api.post("/chatbot/admin/settings", payload);
       alert("Đã lưu cấu hình chatbot!");
     } catch (err) {
       alert("Lỗi khi lưu: " + (err.response?.data?.message || err.message));
@@ -191,11 +229,12 @@ export default function Chatbot() {
   // =====================
   return (
     <div className="chatbot-container">
+      {/* HEADER */}
       <header className="chatbot-page-header">
         <div>
           <p className="chatbot-kicker">Trợ lý pháp lý AI</p>
           <h1>Cấu hình Chatbot</h1>
-          <p>Quản lý cấu hình và theo dõi hiệu suất phản hồi của hệ thống AI.</p>
+          <p>Quản lý cấu hình, tham số và theo dõi hiệu suất hệ thống AI</p>
         </div>
         <div className="chatbot-header-status">
           <span className={`status-pill ${settings.enabled ? "online" : "offline"}`}>
@@ -205,6 +244,7 @@ export default function Chatbot() {
         </div>
       </header>
 
+      {/* QUICK METRICS */}
       <div className="chatbot-status">
         <StatusBox
           label="Tổng hội thoại"
@@ -216,47 +256,54 @@ export default function Chatbot() {
           label="Thành công"
           value={stats.successfulResponses}
           tone="success"
-          icon={<Save size={18} />}
+          icon={<CheckCircle size={18} />}
         />
         <StatusBox
           label="Lỗi"
           value={stats.failedResponses}
           tone="danger"
-          icon={<RotateCcw size={18} />}
+          icon={<AlertCircle size={18} />}
         />
         <StatusBox
           label="TG phản hồi TB"
           value={stats.averageResponseTime}
           tone="info"
-          icon={<Database size={18} />}
+          icon={<BarChart3 size={18} />}
         />
       </div>
 
-      <div className="chatbot-section">
-        <h3 className="chatbot-section-title">
-          <MessageSquare size={18} /> Cài đặt chung
-        </h3>
-
-        <div className="chatbot-toggle-row">
+      {/* POWER CONTROL */}
+      <div className="chatbot-section power-section">
+        <div className="power-control">
+          <div>
+            <h3 className="power-title">Trạng thái hệ thống</h3>
+            <p className="power-desc">Bật hoặc tắt trợ lý AI</p>
+          </div>
           <button
-            className={`toggle-btn ${settings.enabled ? "on" : "off"}`}
+            className={`power-toggle ${settings.enabled ? "on" : "off"}`}
             onClick={toggleChatbot}
             disabled={savingToggle}
           >
-            <Power size={16} />
-            {settings.enabled ? "Chatbot ĐANG BẬT" : "Chatbot ĐANG TẮT"}
+            <Power size={18} />
+            <span>{settings.enabled ? "Bật" : "Tắt"}</span>
           </button>
-
-          {savingToggle && (
-            <span className="toggle-saving-state">Đang cập nhật...</span>
-          )}
         </div>
+        {savingToggle && <div className="power-saving">Đang cập nhật...</div>}
+      </div>
+
+      {/* GENERAL SETTINGS */}
+      <div className="chatbot-section">
+        <h3 className="chatbot-section-title">
+          <Settings size={18} /> Cài đặt chung
+        </h3>
+        <p className="chatbot-section-desc">Tùy chỉnh các cài đặt cơ bản</p>
 
         <div className="chatbot-settings">
           <div className="setting-item setting-item-full">
             <label className="setting-label">Tin nhắn chào mừng</label>
             <input
               className="setting-input"
+              placeholder="Nhập tin nhắn..."
               value={settings.welcomeMessage || ""}
               onChange={(e) =>
                 setSettings({ ...settings, welcomeMessage: e.target.value })
@@ -266,64 +313,101 @@ export default function Chatbot() {
 
           <div className="setting-group">
             <Input
-              label="Độ trễ (ms)"
+              label="Độ trễ phản hồi (ms)"
               value={settings.responseDelay}
-              onChange={(v) =>
-                setSettings({ ...settings, responseDelay: v })
-              }
+              onChange={(v) => setSettings({ ...settings, responseDelay: v })}
             />
             <Input
               label="Lịch sử tối đa"
               value={settings.maxHistory}
-              onChange={(v) =>
-                setSettings({ ...settings, maxHistory: v })
-              }
+              onChange={(v) => setSettings({ ...settings, maxHistory: v })}
             />
           </div>
         </div>
       </div>
 
-      {/* AI SETTINGS */}
+      {/* DOMAIN CONFIGURATION */}
       <div className="chatbot-section">
         <h3 className="chatbot-section-title">
-          <Database size={18} /> Cài đặt AI
+          <Shield size={18} /> Phạm vi lĩnh vực
         </h3>
+        <p className="chatbot-section-desc">Chọn những lĩnh vực pháp lý mà chatbot có thể tư vấn</p>
 
-        <div className="chatbot-settings">
-          <div className="setting-item setting-item-full">
-            <label className="setting-label">Nguồn dữ liệu</label>
-            <select
-              className="setting-input"
-              value={settings.dataSource || "all"}
-              onChange={(e) =>
-                setSettings({ ...settings, dataSource: e.target.value })
-              }
-            >
-              <option value="all">Tất cả</option>
-              <option value="laws">Văn bản pháp luật</option>
-              <option value="content">Nội dung đơn giản hóa</option>
-            </select>
-          </div>
-
-          <div className="setting-group">
-            <Input
-              label="Temperature"
-              value={settings.temperature}
-              onChange={(v) =>
-                setSettings({ ...settings, temperature: v })
-              }
-            />
-            <Input
-              label="Max Tokens"
-              value={settings.maxTokens}
-              onChange={(v) =>
-                setSettings({ ...settings, maxTokens: v })
-              }
-            />
-          </div>
+        <div className="domains-grid">
+          {laws.length === 0 ? (
+            <p className="no-laws-msg">Đang tải danh sách luật...</p>
+          ) : (
+            laws.map((law) => (
+              <DomainToggle
+                key={law.lawId}
+                label={law.title}
+                enabled={selectedLaws[law.lawId] || false}
+                onChange={(v) =>
+                  setSelectedLaws({ ...selectedLaws, [law.lawId]: v })
+                }
+              />
+            ))
+          )}
         </div>
       </div>
 
+      {/* SYSTEM LIMITS */}
+      <div className="chatbot-section">
+        <h3 className="chatbot-section-title">
+          <BarChart3 size={18} /> Giới hạn hệ thống
+        </h3>
+        <p className="chatbot-section-desc">Cấu hình các ràng buộc về lưu lượng và khả năng xử lý</p>
+
+        <div className="limits-grid">
+          <LimitBox
+            label="Truy vấn / người dùng / ngày"
+            value={limits.queriesPerUser}
+            onChange={(v) => setLimits({ ...limits, queriesPerUser: v })}
+            hint="Khuyến nghị: 25-100"
+          />
+          <LimitBox
+            label="Độ dài token tối đa"
+            value={limits.maxTokenLength}
+            onChange={(v) => setLimits({ ...limits, maxTokenLength: v })}
+            hint="Giới hạn cho một phản hồi"
+          />
+        </div>
+
+        <button className="apply-limits-btn" onClick={() => alert("Đã áp dụng giới hạn mới!")}>
+          Áp dụng giới hạn
+        </button>
+      </div>
+
+      {/* ALERTS & MONITORING */}
+      <div className="chatbot-section">
+        <h3 className="chatbot-section-title">
+          <AlertCircle size={18} /> Cảnh báo & Giám sát
+        </h3>
+        <p className="chatbot-section-desc">Quản lý những loại cảnh báo hệ thống nên gửi</p>
+
+        <div className="alerts-list">
+          <AlertRow
+            label="Cảnh báo ngừng hoạt động"
+            desc="Thông báo qua Email và Slack khi dịch vụ gặp sự cố"
+            checked={alerts.systemDowntime}
+            onChange={(v) => setAlerts({ ...alerts, systemDowntime: v })}
+          />
+          <AlertRow
+            label="Cảnh báo tỉ lệ lỗi cao"
+            desc="Cảnh báo khi tỷ lệ lỗi vượt quá 5% trong 5 phút"
+            checked={alerts.highErrorRate}
+            onChange={(v) => setAlerts({ ...alerts, highErrorRate: v })}
+          />
+          <AlertRow
+            label="Cảnh báo vi phạm bảo mật"
+            desc="Phản ứng ngay lập tức cho truy cập trái phép"
+            checked={alerts.securityBreach}
+            onChange={(v) => setAlerts({ ...alerts, securityBreach: v })}
+          />
+        </div>
+      </div>
+
+      {/* ACTION BUTTONS */}
       <div className="chatbot-actions">
         <button className="action-btn save" onClick={handleSave}>
           <Save size={16} /> Lưu cấu hình
@@ -338,10 +422,11 @@ export default function Chatbot() {
           onClick={handleRebuild}
           disabled={rebuilding}
         >
-          🔄 {rebuilding ? "Đang rebuild..." : "Rebuild AI"}
+          {rebuilding ? "Đang rebuild..." : "Rebuild AI Engine"}
         </button>
       </div>
 
+      {/* CHAT HISTORY */}
       <div className="chatbot-section chatbot-history-section">
         <div
           className="chatbot-history-head"
@@ -353,7 +438,7 @@ export default function Chatbot() {
           </span>
 
           <button type="button" className="chatbot-history-toggle">
-            {showHistory ? "Ẩn ▲" : "Xem ▼"}
+            {showHistory ? "Ẩn" : "Xem"}
           </button>
         </div>
 
@@ -375,7 +460,7 @@ export default function Chatbot() {
                       <div className="chat-log-meta">
                         <span>{chat.timestamp}</span>
                         <span className={`chat-log-state ${chat.status === "success" ? "ok" : "error"}`}>
-                          {chat.status === "success" ? "Thành công" : "Thất bại"}
+                          {chat.status === "success" ? "✓ Thành công" : "✗ Thất bại"}
                         </span>
                       </div>
                     </div>
@@ -418,6 +503,52 @@ function Input({ label, value, onChange }) {
         className="setting-input"
         value={value ?? 0}
         onChange={(e) => onChange(Number(e.target.value) || 0)}
+      />
+    </div>
+  );
+}
+
+function DomainToggle({ label, enabled, onChange }) {
+  return (
+    <div className="domain-toggle-card">
+      <div className="domain-label">{label}</div>
+      <button
+        className={`domain-toggle ${enabled ? "enabled" : "disabled"}`}
+        onClick={() => onChange(!enabled)}
+      >
+        <span className="toggle-circle" />
+      </button>
+    </div>
+  );
+}
+
+function LimitBox({ label, value, onChange, hint }) {
+  return (
+    <div className="limit-box">
+      <label className="limit-label">{label}</label>
+      <input
+        type="number"
+        className="limit-input"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+      <p className="limit-hint">{hint}</p>
+    </div>
+  );
+}
+
+function AlertRow({ label, desc, checked, onChange }) {
+  return (
+    <div className="alert-row">
+      <div className="alert-content">
+        <div className="alert-label">{label}</div>
+        <div className="alert-desc">{desc}</div>
+      </div>
+      <input
+        type="checkbox"
+        className="alert-checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
       />
     </div>
   );

@@ -296,8 +296,6 @@ const UserSearchDetail = () => {
       <main className="userdetail-main">
         <section className="userdetail-workspace">
           <div className="userdetail-center">
-            <h1>Hello, how can I help you with legal queries today?</h1>
-
             <div className="userdetail-searchbox">
               <input placeholder="Ask a legal question..." readOnly />
               <button type="button" onClick={() => navigate("/search")}>➔</button>
