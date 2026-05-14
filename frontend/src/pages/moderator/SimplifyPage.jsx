@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { useSearchParams } from "react-router-dom";
 import {
   FiCheckCircle,
   FiChevronDown,
@@ -29,6 +30,7 @@ export default function SimplifyPage() {
   const [pendingQueueCount, setPendingQueueCount] = useState(0);
   const [approvingAll, setApprovingAll] = useState(false);
   const [bulkGenerating, setBulkGenerating] = useState(false);
+  const [searchParams] = useSearchParams();
 
   const API_ARTICLE = "http://localhost:8080/api/articles";
   const API_SIMPLIFIED = "http://localhost:8080/api/moderator/simplified";
@@ -99,6 +101,13 @@ export default function SimplifyPage() {
   useEffect(() => {
     refreshPendingQueueCount();
   }, [refreshPendingQueueCount]);
+
+  useEffect(() => {
+    const queryArticleId = searchParams.get("articleId");
+    if (queryArticleId && queryArticleId !== articleId) {
+      setArticleId(queryArticleId);
+    }
+  }, [articleId, searchParams]);
 
   // Hàm gọi AI
   const generateAI = useCallback(async () => {

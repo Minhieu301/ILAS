@@ -163,18 +163,18 @@ const UserSearchDetail = () => {
       let userId = user?.userId || parseInt(localStorage.getItem("userId"));
 
       const feedbackTypeMap = {
-        content_error: "Sai nội dung",
-        outdated: "Thông tin cũ",
-        unclear: "Khó hiểu",
-        technical: "Lỗi kỹ thuật",
+        content_error: "Sai hoặc thiếu nội dung",
+        outdated: "Thông tin chưa cập nhật",
+        unclear: "Diễn đạt chưa rõ",
+        technical: "Lỗi hiển thị / kỹ thuật",
         other: "Khác",
       };
 
       const feedbackPriorityMap = {
-        low: "Thấp",
-        normal: "Trung bình",
-        high: "Cao",
-        urgent: "Khẩn cấp",
+        low: "Ít ảnh hưởng",
+        normal: "Ảnh hưởng vừa",
+        high: "Ảnh hưởng cao",
+        urgent: "Ảnh hưởng nghiêm trọng",
       };
 
       const targetLabel = type === "article" ? "điều luật" : "văn bản";
@@ -419,38 +419,38 @@ const UserSearchDetail = () => {
 
               <div className="userdetail-feedback-modal-body">
                 <p className="userdetail-feedback-modal-desc">
-                  Bạn phát hiện vấn đề gì với{" "}
-                  {type === "article" ? "điều luật" : "luật"} này? Hãy mô tả chi tiết.
+                  Bạn muốn góp ý gì về{" "}
+                  {type === "article" ? "điều luật" : "văn bản"} này? Hãy mô tả ngắn gọn và rõ ý.
                 </p>
 
                 <div className="userdetail-feedback-extra">
                   <div className="userdetail-feedback-row">
                     <div className="userdetail-feedback-field">
-                      <label>Loại sai sót</label>
+                      <label>Nhóm vấn đề</label>
                       <select
                         className="userdetail-feedback-select"
                         value={feedbackType}
                         onChange={(e) => setFeedbackType(e.target.value)}
                       >
-                        <option value="content_error">Sai nội dung</option>
-                        <option value="outdated">Thông tin cũ</option>
-                        <option value="unclear">Khó hiểu</option>
-                        <option value="technical">Lỗi kỹ thuật</option>
+                        <option value="content_error">Sai hoặc thiếu nội dung</option>
+                        <option value="outdated">Thông tin chưa cập nhật</option>
+                        <option value="unclear">Diễn đạt chưa rõ</option>
+                        <option value="technical">Lỗi hiển thị / kỹ thuật</option>
                         <option value="other">Khác</option>
                       </select>
                     </div>
 
                     <div className="userdetail-feedback-field">
-                      <label>Mức độ ưu tiên</label>
+                      <label>Mức độ ảnh hưởng</label>
                       <select
                         className="userdetail-feedback-select"
                         value={feedbackPriority}
                         onChange={(e) => setFeedbackPriority(e.target.value)}
                       >
-                        <option value="low">Thấp</option>
-                        <option value="normal">Trung bình</option>
-                        <option value="high">Cao</option>
-                        <option value="urgent">Khẩn cấp</option>
+                        <option value="low">Ít ảnh hưởng</option>
+                        <option value="normal">Ảnh hưởng vừa</option>
+                        <option value="high">Ảnh hưởng cao</option>
+                        <option value="urgent">Ảnh hưởng nghiêm trọng</option>
                       </select>
                     </div>
                   </div>
@@ -461,7 +461,7 @@ const UserSearchDetail = () => {
                       checked={sendToModerator}
                       onChange={(e) => setSendToModerator(e.target.checked)}
                     />
-                    <span>Gửi phản hồi này cho moderator để kiểm tra và chỉnh sửa</span>
+                    <span>Chuyển góp ý này đến moderator để kiểm tra và cập nhật nếu cần</span>
                   </label>
                 </div>
 

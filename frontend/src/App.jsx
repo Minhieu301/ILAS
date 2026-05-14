@@ -32,6 +32,7 @@ import SimplifyPage from "./pages/moderator/SimplifyPage";
 import FormPageModerator from "./pages/moderator/FormPage";
 import FeedbackPage from "./pages/moderator/FeedbackPage";
 import HelpCenterPage from "./pages/moderator/HelpCenterPage";
+import ContentQualityPage from "./pages/moderator/ContentQualityPage";
 
 // ===== Admin Pages =====
 import DashboardAdmin from "./pages/admin/DashboardAdmin";
@@ -108,6 +109,7 @@ const router = createBrowserRouter([
     children: [
       { path: "dashboard", element: <DashboardModerator /> },
       { path: "simplify", element: <SimplifyPage /> },
+      { path: "content-quality", element: <ContentQualityPage /> },
       { path: "forms", element: <FormPageModerator /> },
       { path: "feedback", element: <FeedbackPage /> },
       { path: "help", element: <HelpCenterPage /> },
@@ -125,6 +127,7 @@ const router = createBrowserRouter([
     children: [
       { path: "dashboard", element: <DashboardModerator /> },
       { path: "simplify", element: <SimplifyPage /> },
+      { path: "content-quality", element: <ContentQualityPage /> },
       { path: "forms", element: <FormPageModerator /> },
       { path: "feedback", element: <FeedbackPage /> },
       { path: "help", element: <HelpCenterPage /> },
