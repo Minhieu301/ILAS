@@ -49,6 +49,24 @@ export default function Laws({ hideSimplifiedManagement = false }) {
     status: law.status || 'active'
   });
 
+  const fetchAllPages = async (url, pageSize = 500) => {
+    let page = 0;
+    let all = [];
+
+    while (true) {
+      const res = await api.get(url, { params: { page, size: pageSize } });
+      const data = res?.data?.data;
+      const content = Array.isArray(data) ? data : (data?.content || []);
+
+      if (!content || content.length === 0) break;
+      all = all.concat(content);
+      if (content.length < pageSize) break;
+      page += 1;
+    }
+
+    return all;
+  };
+
   useEffect(() => {
     const fetchLaws = async () => {
       setLoadingLaws(true);
@@ -106,8 +124,7 @@ export default function Laws({ hideSimplifiedManagement = false }) {
         setLoadingChapters(true);
         setChapterError(null);
         try {
-          const res = await api.get('/moderator/chapters', { params: { page: 0, size: 2000 } });
-          const content = res?.data?.data?.content || [];
+          const content = await fetchAllPages('/moderator/chapters');
           setChapters(content);
         } catch (e) {
           const message = e?.response?.data?.message || 'Không tải được danh sách chương';
@@ -126,8 +143,7 @@ export default function Laws({ hideSimplifiedManagement = false }) {
         setLoadingArticles(true);
         setArticleError(null);
         try {
-          const res = await api.get('/moderator/articles', { params: { page: 0, size: 2000 } });
-          const content = res?.data?.data?.content || [];
+          const content = await fetchAllPages('/moderator/articles');
           setArticles(content);
         } catch (e) {
           const message = e?.response?.data?.message || 'Không tải được danh sách điều';

@@ -14,7 +14,6 @@ from .content_cleaner import normalize_article_content
 from .metadata_extractor import extract_metadata
 from .db_inserts import insert_chapter, insert_section, insert_article
 from .archive_cleanup import (
-    archive_other_laws,
     archive_old_data,
     cleanup_versions
 )
@@ -185,10 +184,7 @@ def crawl_law_page(url: str):
             log_step(f"Luật ID={law_id} | Phiên bản={version_number}")
 
             # ARCHIVE
-            log_step("Đang archive các luật khác")
-            # ĐÃ ĐÓNG TÍNH NĂNG NÀY ĐỂ TRÁNH LỖI VÔ HIỆU HÓA LUẬT KHÁC
-            # archive_other_laws(cur, law_id)
-
+            # Đã bỏ tính năng archive tất cả luật khác — giữ nhiều luật active cùng lúc
             log_step("Đang archive dữ liệu cũ của luật")
             archive_old_data(cur, law_id)
 

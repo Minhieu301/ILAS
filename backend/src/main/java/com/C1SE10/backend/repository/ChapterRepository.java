@@ -15,7 +15,7 @@ public interface ChapterRepository extends JpaRepository<Chapter, Integer> {
     /**
      * Tìm chapters theo law ID - chỉ chapters active
      */
-    @Query("SELECT c FROM Chapter c WHERE c.law.lawId = :lawId AND c.status = 'active'")
+    @Query("SELECT c FROM Chapter c WHERE c.law.lawId = :lawId AND c.status = 'active' AND c.versionNumber = c.law.versionNumber")
     List<Chapter> findByLawId(@Param("lawId") Integer lawId);
 
     /**
@@ -27,13 +27,13 @@ public interface ChapterRepository extends JpaRepository<Chapter, Integer> {
     /**
      * Tìm chapter theo law ID và số chương - chỉ chapters active
      */
-    @Query("SELECT c FROM Chapter c WHERE c.law.lawId = :lawId AND c.chapterNumber = :chapterNumber AND c.status = 'active'")
+    @Query("SELECT c FROM Chapter c WHERE c.law.lawId = :lawId AND c.chapterNumber = :chapterNumber AND c.status = 'active' AND c.versionNumber = c.law.versionNumber")
     List<Chapter> findByLawIdAndChapterNumber(@Param("lawId") Integer lawId,
                                               @Param("chapterNumber") String chapterNumber);
 
     /**
      * Tìm tất cả chapters active
      */
-    @Query("SELECT c FROM Chapter c WHERE c.status = 'active'")
+    @Query("SELECT c FROM Chapter c WHERE c.status = 'active' AND c.versionNumber = c.law.versionNumber")
     List<Chapter> findAllActive();
 }

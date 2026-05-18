@@ -1,40 +1,3 @@
-def archive_other_laws(cur, law_id):
-    # 1) Archive laws khác
-    cur.execute("""
-        UPDATE laws SET status='archived'
-        WHERE law_id != %s AND status = 'active'
-    """, (law_id,))
-
-    # 2) Archive chapters/sections/articles thuộc các laws đã archived
-    cur.execute("""
-        UPDATE chapters SET status='archived'
-        WHERE law_id IN (SELECT law_id FROM laws WHERE status='archived')
-    """)
-
-    cur.execute("""
-        UPDATE sections SET status='archived'
-        WHERE chapter_id IN (
-            SELECT chapter_id FROM chapters WHERE law_id IN (
-                SELECT law_id FROM laws WHERE status='archived'
-            )
-        )
-    """)
-
-    cur.execute("""
-        UPDATE articles SET status='archived'
-        WHERE law_id IN (SELECT law_id FROM laws WHERE status='archived')
-    """)
-
-    # 3) Archive simplified_articles theo articles của laws archived
-    cur.execute("""
-        UPDATE simplified_articles SET status='archived'
-        WHERE article_id IN (
-            SELECT article_id FROM articles
-            WHERE law_id IN (SELECT law_id FROM laws WHERE status='archived')
-        )
-    """)
-
-
 def archive_old_data(cur, law_id):
     """
     Archive dữ liệu cũ của law_id trước khi insert bản mới.
@@ -60,7 +23,7 @@ def archive_old_data(cur, law_id):
     cur.execute("""
         UPDATE simplified_articles SET status='archived'
         WHERE article_id IN (
-            SELECT article_id FROM articles WHERE law_id=%s
+            SELECT article_id FROM articles WHERE law_id=%s AND status='active'
         )
     """, (law_id,))
 
@@ -89,7 +52,16 @@ def cleanup_versions(cur, keep_last=5):
             ) t
             WHERE t.rn <= {int(keep_last)}
         """)
-        recent_pairs = [(r["law_id"], r["version_number"]) for r in cur.fetchall()]
+        rows = cur.fetchall()
+        for r in rows:
+            # support both dict-cursor and tuple cursor
+            try:
+                lid = r["law_id"]
+                v = r["version_number"]
+            except Exception:
+                lid = r[0]
+                v = r[1]
+            recent_pairs.append((lid, v))
     except Exception:
         # Fallback for older MySQL versions without window functions
         # Keep versions where there are fewer than keep_last newer versions of the same law
@@ -104,7 +76,21 @@ def cleanup_versions(cur, keep_last=5):
                            AND lv2.version_number > lv.version_number))
             ) < {int(keep_last)}
         """)
-        recent_pairs = [(r["law_id"], r["version_number"]) for r in cur.fetchall()]
+        rows = cur.fetchall()
+        for r in rows:
+            try:
+                lid = r["law_id"]
+                v = r["version_number"]
+            except Exception:
+                lid = r[0]
+                v = r[1]
+            recent_pairs.append((lid, v))
+
+    # Debug: write a brief log to stdout so operator can inspect what's being kept
+    try:
+        print(f"[cleanup_versions] Keeping {len(recent_pairs)} version entries (keep_last={keep_last}). Samples: {recent_pairs[:20]}")
+    except Exception:
+        pass
 
     # Nếu chưa có đủ dữ liệu thì không cần cleanup
     if not recent_pairs:
