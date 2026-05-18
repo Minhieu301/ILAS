@@ -54,11 +54,42 @@ export default function Laws({ hideSimplifiedManagement = false }) {
       setLoadingLaws(true);
       setLawError(null);
       try {
-        const res = await api.get('/moderator/laws', { params: { page: 0, size: 50 } });
-        const content = res?.data?.data?.content || [];
-        const mapped = content.map(mapLawDto);
-        setLaws(mapped);
-      } catch (e) {
+          const pageSize = 200;
+          let page = 0;
+          let all = [];
+
+          const fetchPage = async (url, p) => {
+            const res = await api.get(url, { params: { page: p, size: pageSize } });
+            const data = res?.data?.data;
+            const content = Array.isArray(data) ? data : (data?.content || []);
+            return content;
+          };
+
+          // Try moderator endpoint first and page through results
+          try {
+            while (true) {
+              const content = await fetchPage('/moderator/laws', page);
+              if (!content || content.length === 0) break;
+              all = all.concat(content);
+              if (content.length < pageSize) break;
+              page += 1;
+            }
+          } catch (err) {
+            // fallback to public endpoint and page through results
+            page = 0;
+            all = [];
+            while (true) {
+              const content = await fetchPage('/laws', page);
+              if (!content || content.length === 0) break;
+              all = all.concat(content);
+              if (content.length < pageSize) break;
+              page += 1;
+            }
+          }
+
+          const mapped = all.map(mapLawDto);
+          setLaws(mapped);
+        } catch (e) {
         const message = e?.response?.data?.message || 'Không tải được danh sách luật';
         setLawError(message);
       } finally {
@@ -388,6 +419,18 @@ export default function Laws({ hideSimplifiedManagement = false }) {
       .filter((ar) => ar.lawId || ar.lawTitle)
       .map((ar) => [String(ar.lawId || ar.lawTitle), { id: String(ar.lawId || ar.lawTitle), title: ar.lawTitle || `Luật #${ar.lawId}` }])
   ).values()].sort((a, b) => a.title.localeCompare(b.title, 'vi'));
+  // ensure selects include laws that may not have chapters/articles loaded
+  const lawOptionsFromLaws = laws.map((l) => ({ id: String(l.id), title: l.title }));
+
+  const buildCombinedOptions = (sourceOptions) => {
+    const combined = new Map();
+    sourceOptions.forEach((opt) => combined.set(String(opt.id), opt));
+    lawOptionsFromLaws.forEach((opt) => { if (!combined.has(opt.id)) combined.set(opt.id, opt); });
+    return Array.from(combined.values()).sort((a, b) => a.title.localeCompare(b.title, 'vi'));
+  };
+
+  const combinedChapterLawOptions = buildCombinedOptions(chapterLawOptions);
+  const combinedArticleLawOptions = buildCombinedOptions(articleLawOptions);
   const filteredChapters = chapters.filter((ch) => {
     const keyword = chapterSearch.trim().toLowerCase();
     const matchKeyword = !keyword || [
@@ -997,7 +1040,7 @@ export default function Laws({ hideSimplifiedManagement = false }) {
               }}
             >
               <option value="">Tất cả bộ luật</option>
-              {chapterLawOptions.map((law) => (
+              {lawOptionsFromLaws.map((law) => (
                 <option key={law.id} value={law.id}>{law.title}</option>
               ))}
             </select>
@@ -1102,7 +1145,7 @@ export default function Laws({ hideSimplifiedManagement = false }) {
               }}
             >
               <option value="">Tất cả bộ luật</option>
-              {articleLawOptions.map((law) => (
+              {lawOptionsFromLaws.map((law) => (
                 <option key={law.id} value={law.id}>{law.title}</option>
               ))}
             </select>

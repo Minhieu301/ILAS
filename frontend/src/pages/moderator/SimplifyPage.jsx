@@ -15,6 +15,7 @@ import "../../styles/moderator/SimplifyPage.css";
 
 export default function SimplifyPage() {
   const [articles, setArticles] = useState([]);
+  const [lawsList, setLawsList] = useState([]);
   const [selectedLawId, setSelectedLawId] = useState("");
   const [articleId, setArticleId] = useState("");
   const [articleTitle, setArticleTitle] = useState("");
@@ -62,6 +63,32 @@ export default function SimplifyPage() {
         setArticles(Array.isArray(res.data) ? res.data : []);
       })
       .catch((err) => console.error("Load articles failed", err));
+  }, []);
+
+  // Load danh sách văn bản pháp luật (để hiển thị đầy đủ bộ luật)
+  useEffect(() => {
+    const fetchLaws = async () => {
+      try {
+        const res = await axios.get('http://localhost:8080/api/laws', {
+          params: { page: 0, size: 1000 },
+          validateStatus: () => true,
+        });
+
+        // Backend trả về ApiResponse { success, message, data: Page }
+        const pageData = res.data?.data || res.data;
+        const content = Array.isArray(pageData)
+          ? pageData
+          : pageData?.content || [];
+
+        const mapped = content.map((l) => ({ lawId: l.id || l.lawId, lawTitle: l.title || l.lawTitle }));
+        setLawsList(mapped);
+      } catch (err) {
+        console.error('Load laws failed', err);
+        setLawsList([]);
+      }
+    };
+
+    fetchLaws();
   }, []);
 
   // Load danh sách bài của Moderator
@@ -274,8 +301,12 @@ export default function SimplifyPage() {
   });
 
   const lawOptions = useMemo(() => {
-    const map = new Map();
+    // Prefer full law list from backend; fallback to deriving from articles
+    if (lawsList && lawsList.length > 0) {
+      return lawsList.sort((a, b) => String(a.lawTitle).localeCompare(String(b.lawTitle), 'vi', { sensitivity: 'base' }));
+    }
 
+    const map = new Map();
     articles.forEach((article) => {
       if (!article?.lawId) return;
       if (!map.has(article.lawId)) {
@@ -287,11 +318,9 @@ export default function SimplifyPage() {
     });
 
     return Array.from(map.values()).sort((a, b) =>
-      String(a.lawTitle).localeCompare(String(b.lawTitle), "vi", {
-        sensitivity: "base",
-      })
+      String(a.lawTitle).localeCompare(String(b.lawTitle), 'vi', { sensitivity: 'base' })
     );
-  }, [articles]);
+  }, [articles, lawsList]);
 
   const filteredArticles = useMemo(() => {
     if (!selectedLawId) return articles;

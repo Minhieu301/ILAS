@@ -6,13 +6,11 @@ import com.C1SE10.backend.dto.response.admin.UserResponseDTO;
 import com.C1SE10.backend.service.admin.AdminUserService;
 
 import lombok.RequiredArgsConstructor;
+import com.C1SE10.backend.service.log.AuditLogService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import com.C1SE10.backend.service.log.AuditLogService;
-import com.C1SE10.backend.model.UserAccount;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 @RestController
 @RequestMapping("/api/admin/users")
@@ -31,48 +29,28 @@ public class AdminUserController {
     @PostMapping
     public UserResponseDTO createUser(@RequestBody CreateUserRequest req) {
         UserResponseDTO created = adminUserService.createUser(req);
-        try {
-            UserAccount user = null;
-            var auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.getPrincipal() instanceof UserAccount ua) user = ua;
-            auditLogService.log("Tạo người dùng", "Tạo user: " + created.getEmail(), user);
-        } catch (Exception ignore) {}
+        auditLogService.logSafe("Tạo người dùng", "Tạo user: " + created.getEmail());
         return created;
     }
 
     @PutMapping("/{id}")
     public UserResponseDTO updateUser(@PathVariable Integer id, @RequestBody UpdateUserRequest req) {
         UserResponseDTO updated = adminUserService.updateUser(id, req);
-        try {
-            UserAccount user = null;
-            var auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.getPrincipal() instanceof UserAccount ua) user = ua;
-            auditLogService.log("Cập nhật người dùng", "Cập nhật user id=" + id, user);
-        } catch (Exception ignore) {}
+        auditLogService.logSafe("Cập nhật người dùng", "Cập nhật user id=" + id);
         return updated;
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable Integer id) {
         adminUserService.deleteUser(id);
-        try {
-            UserAccount user = null;
-            var auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.getPrincipal() instanceof UserAccount ua) user = ua;
-            auditLogService.log("Xóa người dùng", "Xóa user id=" + id, user);
-        } catch (Exception ignore) {}
+        auditLogService.logSafe("Xóa người dùng", "Xóa user id=" + id);
         return ResponseEntity.ok().build();
     }
 
     @PutMapping("/{id}/toggle")
     public ResponseEntity<?> toggleStatus(@PathVariable Integer id) {
         adminUserService.toggleStatus(id);
-        try {
-            UserAccount user = null;
-            var auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.getPrincipal() instanceof UserAccount ua) user = ua;
-            auditLogService.log("Đổi trạng thái người dùng", "Toggle trạng thái user id=" + id, user);
-        } catch (Exception ignore) {}
+        auditLogService.logSafe("Đổi trạng thái người dùng", "Toggle trạng thái user id=" + id);
         return ResponseEntity.ok().build();
     }
 }

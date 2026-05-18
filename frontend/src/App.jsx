@@ -33,6 +33,7 @@ import FormPageModerator from "./pages/moderator/FormPage";
 import FeedbackPage from "./pages/moderator/FeedbackPage";
 import HelpCenterPage from "./pages/moderator/HelpCenterPage";
 import ContentQualityPage from "./pages/moderator/ContentQualityPage";
+import LawDiffPage from "./pages/moderator/LawDiffPage";
 
 // ===== Admin Pages =====
 import DashboardAdmin from "./pages/admin/DashboardAdmin";
@@ -110,6 +111,7 @@ const router = createBrowserRouter([
       { path: "dashboard", element: <DashboardModerator /> },
       { path: "simplify", element: <SimplifyPage /> },
       { path: "content-quality", element: <ContentQualityPage /> },
+      { path: "diff", element: <LawDiffPage /> },
       { path: "forms", element: <FormPageModerator /> },
       { path: "feedback", element: <FeedbackPage /> },
       { path: "help", element: <HelpCenterPage /> },
@@ -128,6 +130,7 @@ const router = createBrowserRouter([
       { path: "dashboard", element: <DashboardModerator /> },
       { path: "simplify", element: <SimplifyPage /> },
       { path: "content-quality", element: <ContentQualityPage /> },
+      { path: "diff", element: <LawDiffPage /> },
       { path: "forms", element: <FormPageModerator /> },
       { path: "feedback", element: <FeedbackPage /> },
       { path: "help", element: <HelpCenterPage /> },

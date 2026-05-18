@@ -4,6 +4,7 @@ import com.C1SE10.backend.dto.request.admin.AdminLawRequest;
 import com.C1SE10.backend.dto.response.user.LawDTO;
 import com.C1SE10.backend.model.Law;
 import com.C1SE10.backend.repository.LawRepository;
+import com.C1SE10.backend.service.moderator.LawDiffService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -18,6 +19,7 @@ import org.springframework.util.StringUtils;
 public class ModeratorLawManagementService {
 
     private final LawRepository lawRepository;
+    private final LawDiffService lawDiffService;
 
     public Page<LawDTO> list(String keyword, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -39,14 +41,18 @@ public class ModeratorLawManagementService {
 
     public LawDTO update(Integer id, AdminLawRequest req) {
         Law law = lawRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Law not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy văn bản luật với id: " + id));
+        try {
+            lawDiffService.saveSnapshot(id, null, "Tự động lưu trước khi cập nhật");
+        } catch (Exception ignored) {
+        }
         apply(req, law);
         return new LawDTO(lawRepository.save(law));
     }
 
     public void delete(Integer id) {
         if (!lawRepository.existsById(id)) {
-            throw new IllegalArgumentException("Law not found with id: " + id);
+            throw new RuntimeException("Không tìm thấy văn bản luật với id: " + id);
         }
         lawRepository.deleteById(id);
     }

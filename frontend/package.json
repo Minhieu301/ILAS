@@ -29,6 +29,7 @@
     "start": "set \"DANGEROUSLY_DISABLE_HOST_CHECK=true\"&& react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "postinstall": "node scripts/strip-docx-preview-sourcemaps.js",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef } from "react";
 import { Clock3, FileSearch, Info, Link2, Logs, Trash2, Zap } from "lucide-react";
 import api from "../../api/api";
 import "../../styles/admin/crawl-laws.css";
@@ -8,20 +8,22 @@ export default function AdminCrawlLaws() {
   const [loading, setLoading] = useState(false);
   const [url, setUrl] = useState(process.env.REACT_APP_CRAWLER_DEFAULT_URL || "");
   const [result, setResult] = useState(null);
-  const [logIdCounter, setLogIdCounter] = useState(0);
+  // useRef to generate stable unique ids synchronously when adding many logs quickly
+  const logIdRef = useRef(0);
 
   const addLog = (message, status = "info", timeOverride = null) => {
     const time = timeOverride || new Date().toLocaleString("vi-VN");
+    const id = logIdRef.current++;
     setLogs((prev) => [
       ...prev,
-      { id: logIdCounter, time, message, status },
+      { id, time, message, status },
     ]);
-    setLogIdCounter((prev) => prev + 1);
   };
 
   const clearAll = () => {
     setLogs([]);
     setResult(null);
+    logIdRef.current = 0;
   };
 
   const parseSummaryFromLines = (lines) => {

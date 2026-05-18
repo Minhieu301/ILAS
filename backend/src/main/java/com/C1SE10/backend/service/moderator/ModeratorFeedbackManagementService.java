@@ -57,7 +57,7 @@ public class ModeratorFeedbackManagementService {
             case "new" -> Feedback.Status.UNPROCESSED;
             case "forwarded" -> Feedback.Status.PENDING;
             case "resolved" -> Feedback.Status.RESOLVED;
-            default -> throw new RuntimeException("Invalid status");
+            default -> throw new RuntimeException("Trạng thái không hợp lệ: " + status);
         };
 
         return feedbackRepo.findByStatus(s).stream()
@@ -67,7 +67,7 @@ public class ModeratorFeedbackManagementService {
 
     public AdminFeedbackResponseDTO forward(Integer id) {
         Feedback f = feedbackRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Feedback not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phản hồi"));
 
         f.setStatus(Feedback.Status.PENDING);
         return toDTO(feedbackRepo.save(f));
@@ -75,7 +75,7 @@ public class ModeratorFeedbackManagementService {
 
     public AdminFeedbackResponseDTO resolve(Integer id) {
         Feedback f = feedbackRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Feedback not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phản hồi"));
 
         f.setStatus(Feedback.Status.RESOLVED);
         return toDTO(feedbackRepo.save(f));

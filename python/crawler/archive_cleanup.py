@@ -76,23 +76,35 @@ def cleanup_versions(cur, keep_last=5):
       - chapters
       - law_versions
     """
-
     # 1) Lấy các (law_id, version_number) mới nhất cần GIỮ
+    # Thay đổi: thực hiện theo *từng law_id* (KEEP N PER LAW), không phải toàn hệ thống.
+    recent_pairs = []
     try:
+        # MySQL 8+ or other DBs supporting window functions
         cur.execute(f"""
-            SELECT law_id, version_number
-            FROM law_versions
-            ORDER BY crawled_at DESC
-            LIMIT {int(keep_last)}
+            SELECT law_id, version_number FROM (
+                SELECT law_id, version_number,
+                       ROW_NUMBER() OVER (PARTITION BY law_id ORDER BY COALESCE(crawled_at, created_at) DESC) AS rn
+                FROM law_versions
+            ) t
+            WHERE t.rn <= {int(keep_last)}
         """)
+        recent_pairs = [(r["law_id"], r["version_number"]) for r in cur.fetchall()]
     except Exception:
+        # Fallback for older MySQL versions without window functions
+        # Keep versions where there are fewer than keep_last newer versions of the same law
         cur.execute(f"""
-            SELECT law_id, version_number
-            FROM law_versions
-            ORDER BY created_at DESC
-            LIMIT {int(keep_last)}
+            SELECT lv.law_id, lv.version_number
+            FROM law_versions lv
+            WHERE (
+                SELECT COUNT(*) FROM law_versions lv2
+                WHERE lv2.law_id = lv.law_id
+                  AND (COALESCE(lv2.crawled_at, lv2.created_at) > COALESCE(lv.crawled_at, lv.created_at)
+                       OR (COALESCE(lv2.crawled_at, lv2.created_at) = COALESCE(lv.crawled_at, lv.created_at)
+                           AND lv2.version_number > lv.version_number))
+            ) < {int(keep_last)}
         """)
-    recent_pairs = [(r["law_id"], r["version_number"]) for r in cur.fetchall()]
+        recent_pairs = [(r["law_id"], r["version_number"]) for r in cur.fetchall()]
 
     # Nếu chưa có đủ dữ liệu thì không cần cleanup
     if not recent_pairs:

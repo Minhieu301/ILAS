@@ -32,7 +32,7 @@ public class AdminUserService {
     public UserResponseDTO createUser(CreateUserRequest req) {
 
         Role role = roleRepo.findByRoleName(req.getRole())
-                .orElseThrow(() -> new RuntimeException("Role not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy vai trò"));
 
         UserAccount user = UserAccount.builder()
                 .fullName(req.getFullName())
@@ -48,13 +48,13 @@ public class AdminUserService {
 
     public UserResponseDTO updateUser(Integer id, UpdateUserRequest req) {
         UserAccount user = userRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         user.setFullName(req.getFullName());
         user.setEmail(req.getEmail());
 
         Role role = roleRepo.findByRoleName(req.getRole())
-                .orElseThrow(() -> new RuntimeException("Role not found"));
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy vai trò"));
         user.setRole(role);
 
         return toDTO(userRepo.save(user));
@@ -66,7 +66,7 @@ public class AdminUserService {
 
     public void toggleStatus(Integer id) {
         UserAccount user = userRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         user.setIsActive(!user.getIsActive());
         userRepo.save(user);

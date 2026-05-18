@@ -3,7 +3,7 @@ package com.C1SE10.backend.controller.user;
 import com.C1SE10.backend.dto.common.ApiResponse;
 import com.C1SE10.backend.dto.response.user.FormTemplateDTO;
 import com.C1SE10.backend.service.user.UserFormTemplateService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +16,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/forms")
+@RequiredArgsConstructor
 @CrossOrigin(origins = {
         "http://localhost:3000",
         "http://127.0.0.1:3000",
@@ -24,8 +25,7 @@ import java.util.List;
 })
 public class UserFormTemplateController {
 
-    @Autowired
-    private UserFormTemplateService formTemplateService;
+    private final UserFormTemplateService formTemplateService;
 
     /** Lấy tất cả biểu mẫu (có phân trang) */
     @GetMapping

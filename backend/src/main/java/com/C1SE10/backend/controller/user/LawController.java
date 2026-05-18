@@ -7,8 +7,7 @@ import com.C1SE10.backend.dto.response.user.SimplifiedArticleDTO;
 import com.C1SE10.backend.model.SimplifiedArticle;
 import com.C1SE10.backend.repository.SimplifiedArticleRepository;
 import com.C1SE10.backend.service.user.LawService;
-
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,14 +18,12 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/laws")
+@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class LawController {
 
-    @Autowired
-    private LawService lawService;
-
-    @Autowired
-    private SimplifiedArticleRepository simplifiedArticleRepository;
+    private final LawService lawService;
+    private final SimplifiedArticleRepository simplifiedArticleRepository;
 
     // ======================= LUẬT =======================
 

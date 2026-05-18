@@ -5,7 +5,7 @@ import com.C1SE10.backend.dto.request.user.FeedbackRequestDTO;
 import com.C1SE10.backend.dto.response.user.FeedbackDTO;
 import com.C1SE10.backend.model.Feedback;
 import com.C1SE10.backend.service.user.FeedbackService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,10 +15,10 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/feedback")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class FeedbackController {
 
-    @Autowired
-    private FeedbackService feedbackService;
+    private final FeedbackService feedbackService;
 
     /**
      * Tạo feedback mới

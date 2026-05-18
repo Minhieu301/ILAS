@@ -16,6 +16,7 @@ const navItems = [
   { key: "dashboard", label: "Dashboard", path: "/moderator/dashboard", icon: LayoutDashboard },
   { key: "simplify", label: "Quản lý luật", path: "/moderator/simplify", icon: PenSquare },
   { key: "content-quality", label: "Chất lượng nội dung", path: "/moderator/content-quality", icon: Sparkles },
+  { key: "diff", label: "So sánh phiên bản", path: "/moderator/diff", icon: FileText },
   { key: "forms", label: "Biểu mẫu", path: "/moderator/forms", icon: FileText },
   { key: "feedback", label: "Phản hồi", path: "/moderator/feedback", icon: MessageSquare },
 ];

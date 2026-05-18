@@ -1,13 +1,11 @@
 package com.C1SE10.backend.controller.moderator;
 
 import com.C1SE10.backend.dto.response.admin.AdminFeedbackResponseDTO;
-import com.C1SE10.backend.model.UserAccount;
 import com.C1SE10.backend.service.moderator.ModeratorFeedbackManagementService;
 import com.C1SE10.backend.service.log.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -43,36 +41,21 @@ public class ModeratorFeedbackManagementController {
     @PostMapping("/{id}/forward")
     public AdminFeedbackResponseDTO forward(@PathVariable Integer id) {
         AdminFeedbackResponseDTO dto = feedbackService.forward(id);
-        try {
-            UserAccount user = null;
-            var auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.getPrincipal() instanceof UserAccount ua) user = ua;
-            auditLogService.log("Chuyển tiếp phản hồi", "feedbackId=" + id, user);
-        } catch (Exception ignored) {}
+        auditLogService.logSafe("Chuyển tiếp phản hồi", "feedbackId=" + id);
         return dto;
     }
 
     @PostMapping("/{id}/resolve")
     public AdminFeedbackResponseDTO resolve(@PathVariable Integer id) {
         AdminFeedbackResponseDTO dto = feedbackService.resolve(id);
-        try {
-            UserAccount user = null;
-            var auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.getPrincipal() instanceof UserAccount ua) user = ua;
-            auditLogService.log("Giải quyết phản hồi", "feedbackId=" + id, user);
-        } catch (Exception ignored) {}
+        auditLogService.logSafe("Giải quyết phản hồi", "feedbackId=" + id);
         return dto;
     }
 
     @DeleteMapping("/{id}")
     public void deleteFeedback(@PathVariable Integer id) {
         feedbackService.delete(id);
-        try {
-            UserAccount user = null;
-            var auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.getPrincipal() instanceof UserAccount ua) user = ua;
-            auditLogService.log("Xóa phản hồi", "feedbackId=" + id, user);
-        } catch (Exception ignored) {}
+        auditLogService.logSafe("Xóa phản hồi", "feedbackId=" + id);
     }
 }
 

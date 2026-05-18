@@ -3,14 +3,12 @@ package com.C1SE10.backend.controller.moderator;
 import com.C1SE10.backend.dto.common.ApiResponse;
 import com.C1SE10.backend.dto.response.user.SimplifiedArticleDTO;
 import com.C1SE10.backend.model.SimplifiedArticle;
-import com.C1SE10.backend.model.UserAccount;
 import com.C1SE10.backend.service.moderator.ModeratorSimplifiedManagementService;
 import com.C1SE10.backend.service.log.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -36,28 +34,18 @@ public class ModeratorSimplifiedManagementController {
     @PutMapping("/{id}/approve")
     public ResponseEntity<ApiResponse<SimplifiedArticleDTO>> approve(@PathVariable Integer id) {
         SimplifiedArticleDTO dto = simplifiedService.approve(id);
-        try {
-            UserAccount user = null;
-            var auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.getPrincipal() instanceof UserAccount ua) user = ua;
-            String aTitle = dto != null ? dto.getArticleTitle() : null;
-            String detail = aTitle != null && !aTitle.isBlank() ? aTitle : ("articleId=" + (dto != null ? dto.getArticleId() : "n/a"));
-            auditLogService.log("Duyệt bản rút gọn", detail, user);
-        } catch (Exception ignored) {}
+        String aTitle = dto != null ? dto.getArticleTitle() : null;
+        String detail = aTitle != null && !aTitle.isBlank() ? aTitle : ("articleId=" + (dto != null ? dto.getArticleId() : "n/a"));
+        auditLogService.logSafe("Duyệt bản rút gọn", detail);
         return ResponseEntity.ok(ApiResponse.success("Approved", dto));
     }
 
     @PutMapping("/{id}/reject")
     public ResponseEntity<ApiResponse<SimplifiedArticleDTO>> reject(@PathVariable Integer id) {
         SimplifiedArticleDTO dto = simplifiedService.reject(id);
-        try {
-            UserAccount user = null;
-            var auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.getPrincipal() instanceof UserAccount ua) user = ua;
-            String rTitle = dto != null ? dto.getArticleTitle() : null;
-            String rdetail = rTitle != null && !rTitle.isBlank() ? rTitle : ("articleId=" + (dto != null ? dto.getArticleId() : "n/a"));
-            auditLogService.log("Từ chối bản rút gọn", rdetail, user);
-        } catch (Exception ignored) {}
+        String rTitle = dto != null ? dto.getArticleTitle() : null;
+        String rdetail = rTitle != null && !rTitle.isBlank() ? rTitle : ("articleId=" + (dto != null ? dto.getArticleId() : "n/a"));
+        auditLogService.logSafe("Từ chối bản rút gọn", rdetail);
         return ResponseEntity.ok(ApiResponse.success("Rejected", dto));
     }
 }

@@ -35,21 +35,21 @@ public class ModeratorFormManagementService {
 
     public void approveForm(Integer id) {
         FormTemplate form = formRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Form not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy biểu mẫu"));
         form.setStatus(FormTemplate.Status.APPROVED);
         formRepo.save(form);
     }
 
     public void rejectForm(Integer id) {
         FormTemplate form = formRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Form not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy biểu mẫu"));
         form.setStatus(FormTemplate.Status.REJECTED);
         formRepo.save(form);
     }
 
     public void deleteForm(Integer id) {
         if (!formRepo.existsById(id)) {
-            throw new RuntimeException("Form not found");
+            throw new RuntimeException("Không tìm thấy biểu mẫu");
         }
         formRepo.deleteById(id);
     }

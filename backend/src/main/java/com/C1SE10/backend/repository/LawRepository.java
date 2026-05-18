@@ -80,6 +80,11 @@ public interface LawRepository extends JpaRepository<Law, Integer> {
     @Query("SELECT l FROM Law l WHERE l.status = 'active' AND LOWER(l.lawType) LIKE LOWER(CONCAT('%', :lawType, '%'))")
     Page<Law> findByLawTypeContainingIgnoreCase(@Param("lawType") String lawType, Pageable pageable);
 
+        /**
+         * Tìm tất cả luật được sửa đổi từ một luật gốc
+         */
+        List<Law> findByAmendedBy(Integer lawId);
+
     /**
      * Tìm kiếm luật theo khoảng thời gian ban hành - chỉ luật active
      */

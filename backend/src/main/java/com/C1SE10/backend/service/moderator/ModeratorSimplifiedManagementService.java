@@ -37,7 +37,7 @@ public class ModeratorSimplifiedManagementService {
 
     private SimplifiedArticle get(Integer id) {
         return simplifiedArticleRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Simplified article not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết rút gọn với id: " + id));
     }
 }
 

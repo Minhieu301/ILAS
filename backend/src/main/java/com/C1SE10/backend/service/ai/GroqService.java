@@ -19,7 +19,7 @@ public class GroqService {
     public String generateSummary(String content, String title, Integer articleId) {
 
         if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalStateException("Missing Groq API key. Set GROQ_API_KEY env var or groq.api.key in application.properties");
+            throw new RuntimeException("Thiếu khóa API Groq. Hãy đặt biến môi trường GROQ_API_KEY hoặc cấu hình groq.api.key trong application.properties");
         }
 
         if (content != null) content = content.replace("%", "%%");
@@ -61,8 +61,8 @@ public class GroqService {
             return extract(response);
 
         } catch (Exception e) {
-            System.err.println("❌ Groq API error: " + e.getMessage());
-            throw new RuntimeException("Groq API error");
+            System.err.println("❌ Lỗi API Groq: " + e.getMessage());
+            throw new RuntimeException("Lỗi API Groq");
         }
     }
 

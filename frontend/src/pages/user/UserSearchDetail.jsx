@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import UserSidebar from "../../components/user/UserSidebar";
 import { useAuth } from "../../contexts/AuthContext";
@@ -33,17 +33,7 @@ const UserSearchDetail = () => {
   const id = searchParams.get("id");
   const type = searchParams.get("type");
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!id || id === "undefined" || !type) {
-      setError("Thiếu hoặc sai thông tin ID/loại dữ liệu");
-      setLoading(false);
-      return;
-    }
-    loadData();
-  }, [id, type]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -107,7 +97,16 @@ const UserSearchDetail = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, type]);
+
+  useEffect(() => {
+    if (!id || id === "undefined" || !type) {
+      setError("Thiếu hoặc sai thông tin ID/loại dữ liệu");
+      setLoading(false);
+      return;
+    }
+    loadData();
+  }, [id, type, loadData]);
 
   // ===================== FORMAT ===========================
   const formatDate = (dateString) =>

@@ -71,7 +71,7 @@ public class ReportExportService {
         com.itextpdf.text.Font titleFont = FontFactory.getFont("Arial", BaseFont.IDENTITY_H, BaseFont.EMBEDDED, 20, com.itextpdf.text.Font.BOLD, new BaseColor(15, 23, 42));
         com.itextpdf.text.Font subtitleFont = FontFactory.getFont("Arial", BaseFont.IDENTITY_H, BaseFont.EMBEDDED, 10, com.itextpdf.text.Font.NORMAL, new BaseColor(71, 85, 105));
         com.itextpdf.text.Font sectionFont = FontFactory.getFont("Arial", BaseFont.IDENTITY_H, BaseFont.EMBEDDED, 13, com.itextpdf.text.Font.BOLD, new BaseColor(15, 23, 42));
-        com.itextpdf.text.Font headerFont = FontFactory.getFont("Arial", BaseFont.IDENTITY_H, BaseFont.EMBEDDED, 10, com.itextpdf.text.Font.BOLD, BaseColor.WHITE);
+        com.itextpdf.text.Font headerFont = FontFactory.getFont("Arial", BaseFont.IDENTITY_H, BaseFont.EMBEDDED, 10, com.itextpdf.text.Font.BOLD, BaseColor.BLACK);
         com.itextpdf.text.Font normalFont = FontFactory.getFont("Arial", BaseFont.IDENTITY_H, BaseFont.EMBEDDED, 10, com.itextpdf.text.Font.NORMAL, new BaseColor(30, 41, 59));
 
         PdfPTable hero = new PdfPTable(1);

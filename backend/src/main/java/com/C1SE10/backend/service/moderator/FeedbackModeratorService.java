@@ -42,7 +42,7 @@ public class FeedbackModeratorService {
 
     public FeedbackModeratorResponse markResolved(Integer id) {
         Feedback f = feedbackRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Feedback not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phản hồi"));
 
         f.setStatus(Feedback.Status.RESOLVED);
         feedbackRepository.save(f);

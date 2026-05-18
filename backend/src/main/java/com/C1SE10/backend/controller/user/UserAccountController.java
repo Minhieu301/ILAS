@@ -3,27 +3,23 @@ package com.C1SE10.backend.controller.user;
 import com.C1SE10.backend.dto.common.ApiResponse;
 import com.C1SE10.backend.dto.request.user.UserAccountRequest;
 import com.C1SE10.backend.dto.response.user.UserAccountResponse;
+import com.C1SE10.backend.service.log.AuditLogService;
 import com.C1SE10.backend.service.user.UserAccountService;
-
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
-import com.C1SE10.backend.service.log.AuditLogService;
-import com.C1SE10.backend.model.UserAccount;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 @RestController
 @RequestMapping("/api/users")
+@RequiredArgsConstructor
 @CrossOrigin(originPatterns = {"http://localhost", "http://localhost:*", "http://127.0.0.1", "http://127.0.0.1:*"})
 public class UserAccountController {
 
-    @Autowired
-    private UserAccountService userAccountService;
-    @Autowired
-    private AuditLogService auditLogService;
+    private final UserAccountService userAccountService;
+    private final AuditLogService auditLogService;
 
     /**
      * Lấy danh sách tất cả người dùng
@@ -84,12 +80,7 @@ public class UserAccountController {
             }
 
             UserAccountResponse created = userAccountService.createAccount(request);
-            try {
-                UserAccount current = null;
-                var auth = SecurityContextHolder.getContext().getAuthentication();
-                if (auth != null && auth.getPrincipal() instanceof UserAccount ua) current = ua;
-                auditLogService.log("Tạo tài khoản", "Tạo tài khoản username=" + created.getUsername(), current);
-            } catch (Exception ignore) {}
+            auditLogService.logSafe("Tạo tài khoản", "Tạo tài khoản username=" + created.getUsername());
             return ResponseEntity.ok(ApiResponse.success("Tạo tài khoản thành công!", created));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
@@ -121,12 +112,7 @@ public class UserAccountController {
 
 
             UserAccountResponse updated = userAccountService.updateAccount(userId, request);
-            try {
-                UserAccount current = null;
-                var auth = SecurityContextHolder.getContext().getAuthentication();
-                if (auth != null && auth.getPrincipal() instanceof UserAccount ua) current = ua;
-                auditLogService.log("Cập nhật tài khoản", "Cập nhật tài khoản id=" + userId, current);
-            } catch (Exception ignore) {}
+            auditLogService.logSafe("Cập nhật tài khoản", "Cập nhật tài khoản id=" + userId);
             return ResponseEntity.ok(ApiResponse.success("Cập nhật tài khoản thành công!", updated));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
@@ -142,12 +128,7 @@ public class UserAccountController {
     public ResponseEntity<ApiResponse<String>> deleteAccount(@PathVariable Integer userId) {
         try {
             boolean deleted = userAccountService.deleteAccount(userId);
-            try {
-                UserAccount current = null;
-                var auth = SecurityContextHolder.getContext().getAuthentication();
-                if (auth != null && auth.getPrincipal() instanceof UserAccount ua) current = ua;
-                auditLogService.log("Xóa tài khoản", "Xóa tài khoản id=" + userId, current);
-            } catch (Exception ignore) {}
+            auditLogService.logSafe("Xóa tài khoản", "Xóa tài khoản id=" + userId);
             if (deleted) {
                 return ResponseEntity.ok(ApiResponse.success("Xóa tài khoản thành công!", "Người dùng đã bị xóa"));
             } else {

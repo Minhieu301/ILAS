@@ -10,6 +10,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import com.C1SE10.backend.repository.LawRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @RestController
 @RequestMapping("/api/admin/crawler")
@@ -26,6 +31,11 @@ public class AdminCrawlerController {
 
     @Value("${crawler.python.timeoutSeconds:600}")
     private long timeoutSeconds;
+
+    @Autowired
+    private LawRepository lawRepository;
+
+    private final ExecutorService backgroundExecutor = Executors.newSingleThreadExecutor();
 
     @PostMapping("/laws")
     public ResponseEntity<?> crawlLaw(@RequestBody Map<String, String> body) {
@@ -130,6 +140,70 @@ public class AdminCrawlerController {
                 try { process.getErrorStream().close(); } catch (IOException ignored) {}
             }
         }
+    }
+
+    @PostMapping("/crawl-all")
+    public ResponseEntity<?> crawlAllLaws() {
+        // Run in background to avoid HTTP timeout
+        backgroundExecutor.submit(() -> {
+            List<com.C1SE10.backend.model.Law> laws = lawRepository.findAll();
+            for (com.C1SE10.backend.model.Law law : laws) {
+                String url = law.getSourceUrl();
+                if (url == null || url.isBlank()) {
+                    logStepLocal("Skipping law id=" + law.getLawId() + " no source_url");
+                    continue;
+                }
+
+                try {
+                    // reuse existing logic: call python module per URL
+                    Path backendDir = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
+
+                    Path workDirPath = Paths.get(pythonWorkDir);
+                    if (!workDirPath.isAbsolute()) {
+                        workDirPath = backendDir.resolve(workDirPath).normalize();
+                    }
+
+                    String resolvedPythonExe = pythonExe;
+                    if ("python".equalsIgnoreCase((pythonExe == null ? "" : pythonExe).trim())) {
+                        Path venvPy = backendDir.resolve("../.venv/Scripts/python.exe").normalize();
+                        if (venvPy.toFile().exists()) {
+                            resolvedPythonExe = venvPy.toString();
+                        }
+                    }
+
+                    ProcessBuilder pb = new ProcessBuilder(
+                            resolvedPythonExe,
+                            "-m",
+                            pythonModule,
+                            url.trim()
+                    );
+                    pb.directory(workDirPath.toFile());
+                    pb.environment().put("PYTHONUTF8", "1");
+                    pb.environment().put("PYTHONIOENCODING", "utf-8");
+                    pb.redirectErrorStream(true);
+
+                    Process p = pb.start();
+                    String logs = readAll(p.getInputStream());
+                    boolean finished = p.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+                    if (!finished) {
+                        p.destroyForcibly();
+                        logStepLocal("Timeout crawling " + url + " logs: " + (logs == null ? "" : logs.substring(0, Math.min(1000, logs.length()))));
+                    } else {
+                        logStepLocal("Crawled " + url + " exit=" + p.exitValue());
+                    }
+                } catch (Exception ex) {
+                    logStepLocal("Error crawling " + url + " -> " + ex.getMessage());
+                }
+
+                try { Thread.sleep(800); } catch (InterruptedException ignored) {}
+            }
+        });
+
+        return ResponseEntity.accepted().body(Map.of("message", "Bắt đầu chạy crawler cho tất cả luật (chạy nền). Kiểm tra logs server để biết chi tiết."));
+    }
+
+    private void logStepLocal(String s) {
+        System.out.println("[crawler-batch] " + s);
     }
 
     private String readAll(InputStream in) throws IOException {

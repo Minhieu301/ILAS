@@ -35,9 +35,9 @@ public class SimplifiedArticleService {
     ) {
 
         Article article = articleRepo.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("Article not found"));
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết"));
         UserAccount moderator = userRepo.findById(moderatorId)
-                .orElseThrow(() -> new RuntimeException("Moderator not found"));
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy người kiểm duyệt"));
 
         Optional<SimplifiedArticle> existingOpt =
                 simplifiedRepo.findByArticle_ArticleIdAndModerator_UserId(articleId, moderatorId);
@@ -118,10 +118,10 @@ public class SimplifiedArticleService {
 
     public SimplifiedArticleResponseDTO approveOne(Integer simplifiedId, Integer moderatorId) {
         SimplifiedArticle target = simplifiedRepo.findById(simplifiedId)
-                .orElseThrow(() -> new RuntimeException("Simplified article not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết rút gọn"));
 
         if (!target.getModerator().getUserId().equals(moderatorId)) {
-            throw new RuntimeException("You are not allowed to approve this simplified article");
+            throw new RuntimeException("Bạn không có quyền duyệt bài viết rút gọn này");
         }
 
         // Ensure only one APPROVED simplified version is visible per article.
@@ -198,10 +198,10 @@ public class SimplifiedArticleService {
 
     public SimplifiedArticleResponseDTO hideFromUser(Integer simplifiedId, Integer moderatorId) {
         SimplifiedArticle target = simplifiedRepo.findById(simplifiedId)
-                .orElseThrow(() -> new RuntimeException("Simplified article not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết rút gọn"));
 
         if (!target.getModerator().getUserId().equals(moderatorId)) {
-            throw new RuntimeException("You are not allowed to update this simplified article");
+            throw new RuntimeException("Bạn không có quyền cập nhật bài viết rút gọn này");
         }
 
         target.setStatus(SimplifiedArticle.Status.ARCHIVED);
@@ -211,10 +211,10 @@ public class SimplifiedArticleService {
 
     public SimplifiedArticleResponseDTO showToUser(Integer simplifiedId, Integer moderatorId) {
         SimplifiedArticle target = simplifiedRepo.findById(simplifiedId)
-                .orElseThrow(() -> new RuntimeException("Simplified article not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết rút gọn"));
 
         if (!target.getModerator().getUserId().equals(moderatorId)) {
-            throw new RuntimeException("You are not allowed to update this simplified article");
+            throw new RuntimeException("Bạn không có quyền cập nhật bài viết rút gọn này");
         }
 
         target.setStatus(SimplifiedArticle.Status.APPROVED);
