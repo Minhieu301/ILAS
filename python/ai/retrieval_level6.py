@@ -102,8 +102,16 @@ ARTICLES = load_source("articles")
 ARTICLES_CHUNKS = load_source("articles/chunks")
 SIMPLIFIED = load_source("simplified")
 
+# Fallback logic: Nếu ARTICLES missing, cảnh báo và tự động dùng ARTICLES_CHUNKS
+if ARTICLES is None and ARTICLES_CHUNKS is not None:
+    print("[RAG] WARNING: vector_store/articles/ missing. Falling back to articles/chunks only.")
+
 # Lọc bỏ những nguồn bị None
 SOURCES = list(filter(None, [ARTICLES, ARTICLES_CHUNKS, SIMPLIFIED]))
+
+# Validate: Không được để SOURCES rỗng nếu ARTICLES_CHUNKS tồn tại
+if not SOURCES and ARTICLES_CHUNKS is None:
+    print("[RAG] CRITICAL: No vector sources available (articles, articles/chunks, simplified all missing)")
 
 
 def get_source_by_name(name: str):

@@ -14,6 +14,7 @@ load_dotenv(dotenv_path=env_path)
 
 from ai.retrieval_level6 import retrieve_multi_source
 from ai.context_builder import build_context
+from db_core import check_data_health
 import time
 
 RETRIEVAL_TIMEOUT_SEC = int(os.getenv("RETRIEVAL_TIMEOUT_SEC", "20"))
@@ -30,6 +31,12 @@ else:
     _ACTIVE_PROVIDER = "Gemini"
 
 print(f"🤖 Active completion provider: {_ACTIVE_PROVIDER}")
+
+# ======== STARTUP: Check data health ========
+_health = check_data_health()
+print(f"[STARTUP] DB alive: {_health['db_alive']} | articles: {_health['articles_count']} | laws: {_health['laws_count']}")
+if _health['articles_count'] == 0 or _health['laws_count'] == 0:
+    print("⚠️  WARNING: Data might not be imported. Run data import if needed.")
 
 
 def _truncate_text(text: str, max_length: int = 280) -> str:

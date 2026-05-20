@@ -19,6 +19,7 @@ if __name__ == "__main__":
     
     try:
         # 1) Build vector store
+        run_module("ai.build_vector_store_articles")
         run_module("ai.build_vector_store_chunks")
         run_module("ai.build_vector_store_simplified")
 

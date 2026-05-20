@@ -186,6 +186,53 @@ def ping() -> bool:
         if conn:
             release_connection(conn)
 
+def check_data_health() -> dict:
+    """
+    Kiểm tra tình trạng DB và dữ liệu.
+    Trả về dict: {
+        "db_alive": bool,
+        "articles_count": int,
+        "laws_count": int
+    }
+    """
+    result = {
+        "db_alive": False,
+        "articles_count": 0,
+        "laws_count": 0
+    }
+    
+    # 1. Kiểm tra DB alive
+    result["db_alive"] = ping()
+    
+    if not result["db_alive"]:
+        print("[DB] ⚠️ Database connection failed!")
+        return result
+    
+    # 2. Count articles
+    try:
+        rows = execute_query("SELECT COUNT(*) as cnt FROM articles", fetchall=False)
+        if isinstance(rows, dict) and "cnt" in rows:
+            result["articles_count"] = rows["cnt"]
+    except Exception:
+        result["articles_count"] = 0
+    
+    # 3. Count laws
+    try:
+        rows = execute_query("SELECT COUNT(*) as cnt FROM laws", fetchall=False)
+        if isinstance(rows, dict) and "cnt" in rows:
+            result["laws_count"] = rows["cnt"]
+    except Exception:
+        result["laws_count"] = 0
+    
+    # 4. Warnings
+    if result["articles_count"] == 0:
+        print("[DB] ⚠️ Table 'articles' is empty. Did you run the data import?")
+    
+    if result["laws_count"] == 0:
+        print("[DB] ⚠️ Table 'laws' is empty. Did you run the data import?")
+    
+    return result
+
 def close_all_connections():
     if _pool:
         _pool.close_all()
