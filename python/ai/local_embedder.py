@@ -14,6 +14,8 @@ FALLBACK_MODELS = [
 
 _model = None
 _active_model_name = None
+_EMBED_CACHE = {}
+_EMBED_CACHE_MAX = 500
 
 
 def _load_model() -> SentenceTransformer:
@@ -65,10 +67,19 @@ def get_local_embedding(text: str) -> np.ndarray | None:
     """Embedding 1 câu (giữ lại cho code cũ nếu có dùng)."""
     if not text:
         return None
+    key = text.strip()[:200]
+    if key in _EMBED_CACHE:
+        return _EMBED_CACHE[key]
     model = _load_model()
-    text = clean_text(text)
-    vec = model.encode([text], batch_size=16, normalize_embeddings=True)[0]
-    return np.asarray(vec, dtype=np.float32)
+    text_clean = clean_text(text)
+    vec = model.encode([text_clean], batch_size=16, normalize_embeddings=True)[0]
+    result = np.asarray(vec, dtype=np.float32)
+    if len(_EMBED_CACHE) >= _EMBED_CACHE_MAX:
+        keys_to_delete = list(_EMBED_CACHE.keys())[:100]
+        for k in keys_to_delete:
+            del _EMBED_CACHE[k]
+    _EMBED_CACHE[key] = result
+    return result
 
 
 def embed_texts(texts: list[str]) -> np.ndarray:

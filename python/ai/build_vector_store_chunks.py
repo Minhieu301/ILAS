@@ -10,6 +10,8 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from ai.local_embedder import get_local_embedding
 from db_core import get_connection
 
+VECTOR_STORE_DIR = Path(__file__).resolve().parents[1] / "vector_store"
+
 # CHUNKING CHUẨN CHO LUẬT VN
 def split_into_chunks(text):
     text = text.replace("\r", " ").replace("\n", " ")
@@ -50,9 +52,11 @@ def load_articles():
     conn = get_connection()
     with conn.cursor() as cur:
         cur.execute("""
-            SELECT article_id, article_number, article_title, content
-            FROM articles
-            WHERE status='active'
+            SELECT a.article_id, a.article_number, a.article_title, a.content, l.title as law_title
+            FROM articles a
+            LEFT JOIN laws l ON a.law_id = l.law_id
+            WHERE a.status='active'
+            ORDER BY a.article_id ASC
         """)
         return cur.fetchall()
 
@@ -79,7 +83,8 @@ def build_chunk_store():
                 "id": f"art_{art['article_id']}_chunk_{idx}",
                 "article_id": art["article_id"], 
                 "article_number": art["article_number"],
-                "law_title": art["article_title"],
+                "article_title": art["article_title"],
+                "law_title": art.get("law_title") or "Unknown",
                 "clause_number": extract_clause_number(chunk_text),
                 "text": chunk_text,
                 
@@ -90,14 +95,14 @@ def build_chunk_store():
     vectors = np.array(vectors, dtype=np.float32)
 
     # SAVE ĐÚNG THƯ MỤC LEVEL 4
-    out_dir = Path("vector_store/articles/chunks")
+    out_dir = VECTOR_STORE_DIR / "articles" / "chunks"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     np.save(out_dir / "vectors.npy", vectors)
     with open(out_dir / "meta.json", "w", encoding="utf-8") as f:
         json.dump(metadata, f, ensure_ascii=False, indent=2)
 
-    print(f"DONE — {len(vectors)} chunks stored at vector_store/articles/chunks/")
+    print(f"DONE — {len(vectors)} chunks stored at {out_dir}")
 
 
 if __name__ == "__main__":

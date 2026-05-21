@@ -10,20 +10,22 @@ from pymysql.cursors import DictCursor
 from dotenv import load_dotenv
 
 # ---------------------------
-# Load .env (đặt tại python/.env)
+# Load .env from project root first, then python/.env if present.
 # ---------------------------
-ENV_PATH = Path(__file__).resolve().parent / ".env"
-load_dotenv(dotenv_path=ENV_PATH)
+ROOT_ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
+PYTHON_ENV_PATH = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=ROOT_ENV_PATH)
+load_dotenv(dotenv_path=PYTHON_ENV_PATH, override=True)
 
 # ---------------------------
 # Config DB & Pool
 # ---------------------------
-DB_HOST = "localhost"
-DB_PORT = 3306
-DB_USER = "root"
-DB_PASS = "halo20231"        # Gõ thẳng pass của bạn vào đây
-DB_NAME = "ilas_db"
-DB_CHARSET = "utf8mb4"
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = int(os.getenv("DB_PORT", "3306"))
+DB_USER = os.getenv("DB_USER") or os.getenv("DB_USERNAME", "root")
+DB_PASS = os.getenv("DB_PASSWORD") or os.getenv("DB_PASS", "halo20231")
+DB_NAME = os.getenv("DB_NAME", "ilas_db")
+DB_CHARSET = os.getenv("DB_CHARSET", "utf8mb4")
 
 # Pool size có thể chỉnh qua .env
 POOL_SIZE = int(os.getenv("DB_POOL_SIZE", 5))
@@ -210,7 +212,7 @@ def check_data_health() -> dict:
     
     # 2. Count articles
     try:
-        rows = execute_query("SELECT COUNT(*) as cnt FROM articles", fetchall=False)
+        rows = execute_query("SELECT COUNT(*) as cnt FROM articles", fetchone=True)
         if isinstance(rows, dict) and "cnt" in rows:
             result["articles_count"] = rows["cnt"]
     except Exception:
@@ -218,7 +220,7 @@ def check_data_health() -> dict:
     
     # 3. Count laws
     try:
-        rows = execute_query("SELECT COUNT(*) as cnt FROM laws", fetchall=False)
+        rows = execute_query("SELECT COUNT(*) as cnt FROM laws", fetchone=True)
         if isinstance(rows, dict) and "cnt" in rows:
             result["laws_count"] = rows["cnt"]
     except Exception:

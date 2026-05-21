@@ -4,9 +4,13 @@
 # -------------------------------------------------------
 
 import os
+import hashlib
+import time
+import unicodedata
 from pathlib import Path
 from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from collections import OrderedDict
 
 # Load .env from project root
 env_path = Path(__file__).parent.parent.parent / ".env"
@@ -15,9 +19,11 @@ load_dotenv(dotenv_path=env_path)
 from ai.retrieval_level6 import retrieve_multi_source
 from ai.context_builder import build_context
 from db_core import check_data_health
-import time
 
-RETRIEVAL_TIMEOUT_SEC = int(os.getenv("RETRIEVAL_TIMEOUT_SEC", "20"))
+RETRIEVAL_TIMEOUT_SEC = int(os.getenv("RETRIEVAL_TIMEOUT_SEC", "90"))
+_QUERY_CACHE = OrderedDict()
+_CACHE_MAX = 200
+_CACHE_TTL = 3600
 
 # DYNAMIC MODEL SELECTION
 AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").lower().strip()
@@ -37,6 +43,34 @@ _health = check_data_health()
 print(f"[STARTUP] DB alive: {_health['db_alive']} | articles: {_health['articles_count']} | laws: {_health['laws_count']}")
 if _health['articles_count'] == 0 or _health['laws_count'] == 0:
     print("⚠️  WARNING: Data might not be imported. Run data import if needed.")
+
+
+def _normalize_query(text: str) -> str:
+    return unicodedata.normalize("NFC", str(text or "").strip())
+
+
+def _cache_key(query: str) -> str:
+    normalized = " ".join(query.lower().strip().split())
+    return hashlib.md5(normalized.encode("utf-8")).hexdigest()
+
+
+def _cache_get(query: str):
+    key = _cache_key(query)
+    if key in _QUERY_CACHE:
+        result, ts = _QUERY_CACHE[key]
+        if time.time() - ts < _CACHE_TTL:
+            _QUERY_CACHE.move_to_end(key)
+            return result
+        del _QUERY_CACHE[key]
+    return None
+
+
+def _cache_set(query: str, result: dict):
+    key = _cache_key(query)
+    _QUERY_CACHE[key] = (result, time.time())
+    _QUERY_CACHE.move_to_end(key)
+    if len(_QUERY_CACHE) > _CACHE_MAX:
+        _QUERY_CACHE.popitem(last=False)
 
 
 def _truncate_text(text: str, max_length: int = 280) -> str:
@@ -68,17 +102,11 @@ def _build_conversation_context(history) -> str:
 
 
 def _should_rewrite_query(query: str, conversation_context: str) -> bool:
-    q = (query or "").strip().lower()
-    if not q:
+    q = query.strip().lower()
+    if not q or not conversation_context:
         return False
-
-    # Nếu không có hội thoại trước đó thì không cần rewrite.
-    if not conversation_context or not conversation_context.strip():
-        return False
-
-    # Chỉ rewrite cho các câu follow-up mơ hồ để giảm 1 lượt gọi model.
     follow_up_markers = [
-        "khoản",
+        "khoản đó",
         "điều đó",
         "trường hợp này",
         "cái đó",
@@ -88,16 +116,55 @@ def _should_rewrite_query(query: str, conversation_context: str) -> bool:
         "còn nếu",
         "phần trên",
         "mục trên",
-        "đoạn trên",
-        "nội dung đó",
     ]
     return any(marker in q for marker in follow_up_markers)
+
+
+def _insufficient_context_answer() -> str:
+    return (
+        "Rất tiếc, theo dữ liệu hiện tại của hệ thống ILAS, tôi chưa tìm thấy đủ "
+        "căn cứ pháp luật phù hợp để trả lời chắc chắn vấn đề này. Bạn có thể thử "
+        "hỏi lại với thông tin cụ thể hơn như loại hợp đồng, ngày hết hạn hợp đồng, "
+        "thời điểm nghỉ thai sản và thời gian đã đóng bảo hiểm thất nghiệp."
+    )
+
+
+def _build_source_payload(results, limit: int = 5):
+    sources = []
+    chunks = []
+    seen = set()
+    for item in results or []:
+        if item.get("source") not in ["articles", "articles/chunks"]:
+            continue
+        article_number = item.get("article_number")
+        source_title = item.get("law_title")
+        key = (article_number, source_title)
+        if key in seen:
+            continue
+        seen.add(key)
+        label = f"Điều {article_number} - {source_title}" if article_number else str(source_title)
+        sources.append(label)
+        snippet = _truncate_text(item.get("text", ""), 360)
+        chunks.append(f"{label}: {snippet}" if snippet else label)
+        if len(sources) >= limit:
+            break
+    return sources, chunks
+
+
+def _append_source_summary(answer: str, sources) -> str:
+    if not sources:
+        return answer
+    if "Căn cứ ILAS đã dùng" in str(answer or ""):
+        return answer
+    source_lines = "\n".join(f"- {source}" for source in sources[:6])
+    return f"{str(answer or '').strip()}\n\n**Căn cứ ILAS đã dùng:**\n{source_lines}"
 
 
 def answer_legal_question(query: str, settings: dict = None, history=None, conversation_id=None):
     if settings is None:
         settings = {}
 
+    query = _normalize_query(query)
     conversation_context = _build_conversation_context(history)
 
     # 0.5) Check enabled
@@ -136,6 +203,12 @@ def answer_legal_question(query: str, settings: dict = None, history=None, conve
     else:
         search_query = query
 
+    if not history:
+        cached = _cache_get(query)
+        if cached:
+            print("⚡ CACHE HIT")
+            return cached
+
     print(f"🔍 Câu hỏi gốc: {query}")
     print(f"🚀 Câu tối ưu: {search_query}")
 
@@ -156,23 +229,25 @@ def answer_legal_question(query: str, settings: dict = None, history=None, conve
 
         # Retrieval fail
         if not results:
-            fb = fallback_general_answer(query, conversation_context)
             return {
-                "answer": fb + "\n\n⚠️ *Ghi chú: Câu trả lời này không dựa trên dữ liệu ILAS (fallback Gemini).*",
+                "answer": _insufficient_context_answer(),
                 "context_used": None,
-                "source": "fallback",
+                "source": "insufficient-context",
+                "sources": [],
+                "chunks": [],
                 "fallback": True
             }
 
         # 4) Build FULL ARTICLE CONTEXT
-        context = build_context(results)
+        context = build_context(results, query=query)
 
         if not context or len(context.strip()) == 0:
-            fb = fallback_general_answer(query, conversation_context)
             return {
-                "answer": fb + "\n\n⚠️ *Không tìm thấy quy định phù hợp trong dữ liệu ILAS (fallback Gemini).*",
+                "answer": _insufficient_context_answer(),
                 "context_used": None,
-                "source": "fallback",
+                "source": "insufficient-context",
+                "sources": [],
+                "chunks": [],
                 "fallback": True
             }
 
@@ -226,24 +301,29 @@ def answer_legal_question(query: str, settings: dict = None, history=None, conve
             }
 
         # 6) Extracting source
-        top = results[0]
-        article_number = top.get("article_number")
-        source_title = top.get("law_title")
+        legal_sources, legal_chunks = _build_source_payload(results)
+        answer_with_sources = _append_source_summary(answer, legal_sources)
 
-        return {
-            "answer": answer,
-            "context_used": source_title,
-            "source": f"article_{article_number}",
+        result = {
+            "answer": answer_with_sources,
+            "context_used": "; ".join(legal_sources) if legal_sources else None,
+            "source": ",".join(legal_sources) if legal_sources else "articles",
+            "sources": legal_sources,
+            "chunks": legal_chunks,
             "fallback": False
         }
+        if not history:
+            _cache_set(query, result)
+        return result
 
     except FuturesTimeoutError:
         print(f"❌ RETRIEVAL TIMEOUT: exceeded {RETRIEVAL_TIMEOUT_SEC}s")
-        fb = fallback_general_answer(query, conversation_context)
         return {
-            "answer": fb + "\n\n⚠️ *Tra cứu dữ liệu ILAS bị chậm nên hệ thống tạm trả lời theo kiến thức chung.*",
+            "answer": "⚠️ Tra cứu dữ liệu ILAS bị chậm nên tôi chưa thể trả lời chắc chắn bằng căn cứ pháp luật. Vui lòng thử lại.",
             "context_used": None,
             "source": "fallback-timeout",
+            "sources": [],
+            "chunks": [],
             "fallback": True
         }
 

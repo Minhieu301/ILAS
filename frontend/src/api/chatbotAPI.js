@@ -12,7 +12,7 @@ const API_BASE =
 // axios instance with defaults for chatbot API
 const api = axios.create({
   baseURL: API_BASE,
-  timeout: 65000,
+  timeout: 180000,
   withCredentials: false,
   headers: {
     "Content-Type": "application/json",

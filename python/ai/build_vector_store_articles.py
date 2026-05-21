@@ -9,6 +9,8 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from ai.local_embedder import get_local_embedding
 from db_core import get_connection
 
+VECTOR_STORE_DIR = Path(__file__).resolve().parents[1] / "vector_store"
+
 # LOAD ARTICLES TỪ DB
 def load_articles_with_law_info():
     conn = get_connection()
@@ -60,14 +62,14 @@ def build_full_articles_store():
     vectors = np.array(vectors, dtype=np.float32)
 
     # SAVE TO vector_store/articles/
-    out_dir = Path("vector_store/articles")
+    out_dir = VECTOR_STORE_DIR / "articles"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     np.save(out_dir / "vectors.npy", vectors)
     with open(out_dir / "meta.json", "w", encoding="utf-8") as f:
         json.dump(metadata, f, ensure_ascii=False, indent=2)
 
-    print(f"✅ DONE — {len(vectors)} full articles stored at vector_store/articles/")
+    print(f"✅ DONE — {len(vectors)} full articles stored at {out_dir}")
 
 
 if __name__ == "__main__":

@@ -3,7 +3,11 @@ from flask_cors import CORS
 from ai.legal_rag_pipeline import answer_legal_question
 import subprocess
 import os
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env")
 
 app = Flask(__name__)
 CORS(app)

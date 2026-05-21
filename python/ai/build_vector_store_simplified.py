@@ -5,7 +5,7 @@ from pathlib import Path
 from ai.local_embedder import get_local_embedding
 from db_core import get_connection
 
-OUT_DIR = Path("vector_store/simplified")
+OUT_DIR = Path(__file__).resolve().parents[1] / "vector_store" / "simplified"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def load_simplified_from_db():

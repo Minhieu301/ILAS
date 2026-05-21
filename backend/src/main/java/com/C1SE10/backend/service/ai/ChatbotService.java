@@ -33,7 +33,7 @@ public class ChatbotService {
 
     private static final String PYTHON_API = "http://127.0.0.1:5000/api/ask";
     private static final int PYTHON_CONNECT_TIMEOUT_MS = 5_000;
-    private static final int PYTHON_READ_TIMEOUT_MS = 60_000;
+    private static final int PYTHON_READ_TIMEOUT_MS = 240_000;
 
     // =====================================================
     // TOP QUESTIONS (ADMIN)
