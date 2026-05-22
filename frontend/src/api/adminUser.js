@@ -42,7 +42,7 @@ const adminUserAPI = {
       const response = await api.put(`/admin/users/${id}/toggle`);
       return response.data;
     } catch (error) {
-      throw error.response?.data || error;
+      throw error.response?.data || error; 
     }
   },
 };
