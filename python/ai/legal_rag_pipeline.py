@@ -5,6 +5,7 @@
 
 import os
 import hashlib
+import re
 import time
 import unicodedata
 from pathlib import Path
@@ -120,6 +121,69 @@ def _should_rewrite_query(query: str, conversation_context: str) -> bool:
     return any(marker in q for marker in follow_up_markers)
 
 
+def _extract_article_number(query: str) -> str | None:
+    normalized = unicodedata.normalize("NFD", str(query or "").lower())
+    normalized = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    normalized = normalized.replace("đ", "d")
+    match = re.search(r"(?:điều|dieu)\s+(\d+[a-zđ]?)", str(query or ""), flags=re.IGNORECASE)
+    if match:
+        return match.group(1)
+    match = re.search(r"(?:dieu)\s+(\d+[a-z]?)", normalized)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _query_has_law_hint(query: str) -> bool:
+    q = str(query or "").lower()
+    return "bộ luật" in q or "bo luat" in q or "luật " in q or "luat " in q
+
+
+def _extract_cited_sources_from_history(history) -> list[tuple[str, str]]:
+    sources = []
+    if not history:
+        return sources
+
+    patterns = [
+        re.compile(r"Điều\s+(\d+[A-Za-zĐđ]?)\s*-\s*([^\n\r;•\-][^\n\r]*)", re.IGNORECASE),
+        re.compile(r"Điều\s+(\d+[A-Za-zĐđ]?)\s+của\s+([^\n\r;•\-][^\n\r]*)", re.IGNORECASE),
+    ]
+    for item in reversed(list(history)):
+        if not isinstance(item, dict):
+            continue
+        answer = str(item.get("answer") or "")
+        for pattern in patterns:
+            for article_no, law_title in pattern.findall(answer):
+                cleaned_law = law_title.strip(" .:-*\t")
+                cleaned_law = re.split(r"\s{2,}|[,.;:]\s*(?:mà|nơi|cụ thể|bao gồm|quy định)\b", cleaned_law, maxsplit=1)[0]
+                if cleaned_law:
+                    sources.append((article_no.strip(), cleaned_law))
+    return sources
+
+
+def _ground_article_followup(query: str, history) -> str:
+    article_no = _extract_article_number(query)
+    if not article_no or not history or _query_has_law_hint(query):
+        return query
+
+    q = str(query or "").lower()
+    followup_markers = [
+        "căn cứ", "can cu", "bạn căn cứ", "ban can cu", "đã dùng", "da dung",
+        "vừa nêu", "vua neu", "ở trên", "o tren", "là gì", "la gi",
+        "quy định gì", "quy dinh gi"
+    ]
+    if not any(marker in q for marker in followup_markers):
+        return query
+
+    for cited_article_no, law_title in _extract_cited_sources_from_history(history):
+        if str(cited_article_no).lower() == str(article_no).lower():
+            grounded = f"Điều {article_no} {law_title} quy định gì?"
+            print(f"🔗 Grounded follow-up article reference: {grounded}")
+            return grounded
+
+    return query
+
+
 def _insufficient_context_answer() -> str:
     return (
         "Rất tiếc, theo dữ liệu hiện tại của hệ thống ILAS, tôi chưa tìm thấy đủ "
@@ -154,10 +218,13 @@ def _build_source_payload(results, limit: int = 5):
 def _append_source_summary(answer: str, sources) -> str:
     if not sources:
         return answer
-    if "Căn cứ ILAS đã dùng" in str(answer or ""):
+    answer_text = str(answer or "")
+    if "Căn cứ ILAS đã dùng" in answer_text:
+        return answer
+    if re.search(r"(?im)^\s*(?:\*\*)?Căn cứ(?:\s+pháp lý|\s*:|\s*$)", answer_text):
         return answer
     source_lines = "\n".join(f"- {source}" for source in sources[:6])
-    return f"{str(answer or '').strip()}\n\n**Căn cứ ILAS đã dùng:**\n{source_lines}"
+    return f"{answer_text.strip()}\n\n**Căn cứ ILAS đã dùng:**\n{source_lines}"
 
 
 def answer_legal_question(query: str, settings: dict = None, history=None, conversation_id=None):
@@ -202,6 +269,10 @@ def answer_legal_question(query: str, settings: dict = None, history=None, conve
         search_query = optimized_query.strip() if isinstance(optimized_query, str) and optimized_query.strip() else query
     else:
         search_query = query
+    pre_ground_query = search_query
+    search_query = _ground_article_followup(search_query, history)
+    is_grounded_followup = search_query != pre_ground_query
+    completion_question = search_query if is_grounded_followup else query
 
     if not history:
         cached = _cache_get(query)
@@ -239,7 +310,7 @@ def answer_legal_question(query: str, settings: dict = None, history=None, conve
             }
 
         # 4) Build FULL ARTICLE CONTEXT
-        context = build_context(results, query=query)
+        context = build_context(results, query=search_query)
 
         if not context or len(context.strip()) == 0:
             return {
@@ -258,7 +329,7 @@ def answer_legal_question(query: str, settings: dict = None, history=None, conve
 
             answer = guarded_completion(
                 context=context,
-                question=query, # LƯU Ý: Chỗ này VẪN GIỮ NGUYÊN là 'query' gốc nhé
+                question=completion_question,
                 conversation_context=conversation_context,
                 history=history,
                 temperature=float(temperature),
@@ -280,7 +351,7 @@ def answer_legal_question(query: str, settings: dict = None, history=None, conve
                         from ai.groq_service import guarded_completion as groq_guarded_completion
                         groq_answer = groq_guarded_completion(
                             context=context,
-                            question=query,
+                            question=completion_question,
                             conversation_context=conversation_context,
                             history=history,
                             temperature=float(temperature),

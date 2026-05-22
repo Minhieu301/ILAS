@@ -5,7 +5,8 @@ import json
 from pathlib import Path
 
 VECTOR_META_PATH = Path(__file__).resolve().parents[1] / "vector_store" / "articles" / "chunks" / "meta.json"
-MAX_CONTEXT_ARTICLES = 4
+MAX_CONTEXT_ARTICLES = 6
+MAX_LAWS_PER_SOURCE = 2
 MAX_CONTEXT_CHARS = 3500
 
 
@@ -197,6 +198,7 @@ def build_context(results, query=""):
 
     contexts = []
     seen_articles = set()
+    seen_laws = {}
 
     for top in results:
         if len(contexts) >= MAX_CONTEXT_ARTICLES:
@@ -215,6 +217,9 @@ def build_context(results, query=""):
         article_number = top.get("article_number")
         law_title = top.get("law_title")
         law_hint = top.get("law_hint")
+        if law_title and seen_laws.get(law_title, 0) >= MAX_LAWS_PER_SOURCE:
+            continue
+
         dedupe_keys = []
         if article_id:
             dedupe_keys.append(("id", str(article_id)))
@@ -237,6 +242,8 @@ def build_context(results, query=""):
         if context:
             contexts.append(_limit_article_context(context, query))
             seen_articles.update(dedupe_keys)
+            if law_title:
+                seen_laws[law_title] = seen_laws.get(law_title, 0) + 1
 
     if not contexts:
         print(f"[WARN] build_context failed: no DB/vector rows found. top_result={results[0] if results else None}")
